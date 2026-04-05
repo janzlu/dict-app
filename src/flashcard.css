@@ -1,0 +1,104 @@
+body {
+    background-color: transparent;
+    font-family: 'Inter', sans-serif;
+    color: white;
+    margin: 0;
+    overflow: hidden;
+    user-select: none;
+}
+
+.flashcard {
+    width: 280px;
+    height: 140px;
+    background: rgba(18, 18, 20, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 16px;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.flashcard:hover {
+    background: rgba(30, 30, 34, 0.6);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.word {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00d2ff;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.phonetic {
+    font-size: 14px;
+    color: #a0a0a5;
+    margin-bottom: 12px;
+}
+
+.translation {
+    font-size: 15px;
+    text-align: center;
+    display: none; /* Hidden on front side */
+    line-height: 1.4;
+}
+
+/* Flipped State */
+.flashcard.flipped .translation {
+    display: block;
+}
+
+.flashcard.flipped .word, .flashcard.flipped .phonetic {
+    display: none;
+}
+
+.buttons {
+    display: none;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.flashcard.flipped .buttons {
+    display: flex;
+}
+
+.btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn.forgot { background: rgba(255, 60, 60, 0.3); }
+.btn.hard { background: rgba(255, 160, 0, 0.3); }
+.btn.good { background: rgba(60, 255, 60, 0.3); }
+.btn.easy { background: rgba(60, 160, 255, 0.3); }
+
+.btn:hover {
+    filter: brightness(1.2);
+}
+
+/* Removed drag-area */
+
+.close-btn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 12px;
+    color: #a0a0a5;
+    background: none;
+    border: none;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+}
+.close-btn:hover { color: white; }

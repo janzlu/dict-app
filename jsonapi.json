@@ -1,0 +1,949 @@
+{
+  "web_trans": {
+    "web-translation": [
+      {
+        "@same": "true",
+        "key": "hello world",
+        "key-speech": "hello+world",
+        "trans": [
+          {
+            "summary": {
+              "line": [
+                "但它还是努力在屏幕上显示出了“<b>你好世界</b>”（Hello World）这几个字，他和鲁宾的一个伙伴达成了一项敏感的约定。"
+              ]
+            },
+            "value": "你好世界",
+            "support": 496,
+            "url": ""
+          },
+          {
+            "summary": {
+              "line": [
+                "... 注意#pragma pack <b>开始</b>Hello World 前向迭代器ForwardIterator ..."
+              ]
+            },
+            "value": "开始",
+            "support": 244,
+            "url": ""
+          },
+          {
+            "summary": {
+              "line": [
+                "... American Honey 美国甜心 Hello World <b>别来无恙</b> Perfect Day 完美的一天 ..."
+              ]
+            },
+            "value": "别来无恙",
+            "support": 192,
+            "url": ""
+          },
+          {
+            "summary": {
+              "line": [
+                "<b>举个例子</b>，我们都编过Hello World 很多初学者不是很理解为什么main方法一定要这样来定义public static void main(String[] args)， .."
+              ]
+            },
+            "value": "举个例子",
+            "support": 155,
+            "url": ""
+          }
+        ]
+      },
+      {
+        "key": "Hello world UI",
+        "key-speech": "Hello+world+UI",
+        "trans": [
+          {
+            "value": "实现方法"
+          }
+        ]
+      },
+      {
+        "key": "hello world press and key",
+        "key-speech": "hello+world+press+and+key",
+        "trans": [
+          {
+            "value": "您好世界新闻和关键"
+          },
+          {
+            "value": "你好世界新闻和密钥"
+          }
+        ]
+      },
+      {
+        "key": "Hello world only",
+        "key-speech": "Hello+world+only",
+        "trans": [
+          {
+            "value": "世间只有你好"
+          }
+        ]
+      },
+      {
+        "key": "Hello world always",
+        "key-speech": "Hello+world+always",
+        "trans": [
+          {
+            "value": "世间始终你好"
+          }
+        ]
+      },
+      {
+        "key": "air hello world",
+        "key-speech": "air+hello+world",
+        "trans": [
+          {
+            "value": "调税计算器"
+          }
+        ]
+      },
+      {
+        "key": "Hello Kitty Cutie World",
+        "key-speech": "Hello+Kitty+Cutie+World",
+        "trans": [
+          {
+            "value": "凯蒂猫顽皮世界"
+          }
+        ]
+      },
+      {
+        "key": "HELLO WORLD&amp",
+        "key-speech": "HELLO+WORLD%26amp",
+        "trans": [
+          {
+            "value": "第一行代码"
+          }
+        ]
+      }
+    ]
+  },
+  "ee": {
+    "source": {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Hello_World"
+    },
+    "word": {
+      "trs": [
+        {
+          "pos": "abstract:",
+          "tr": [
+            {
+              "l": {
+                "i": "\"Hello World\" is a song written by Tom Douglas, Tony Lane and David Lee and recorded by American country music group Lady Antebellum.  It was released in October 2010 as the fourth single from their album Need You Now."
+              }
+            }
+          ]
+        }
+      ],
+      "phone": "",
+      "speech": "Hello+World",
+      "return-phrase": {
+        "l": {
+          "i": "Hello World"
+        }
+      }
+    }
+  },
+  "blng_sents_part": {
+    "sentence-count": 6,
+    "sentence-pair": [
+      {
+        "sentence": "theboldlife – Hello World. Happy Monday.",
+        "sentence-eng": "theboldlife – <b>Hello</b> <b>World</b>. Happy Monday.",
+        "sentence-translation": "@theboldlife – 你好世界，星期一快乐。",
+        "speech-size": "11kb",
+        "aligned-words": {
+          "src": {
+            "chars": [
+              {
+                "@s": "1",
+                "@e": "12",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "0"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "0"
+              },
+              {
+                "@s": "15",
+                "@e": "20",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "1"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "1"
+                    }
+                  ]
+                },
+                "@id": "1"
+              },
+              {
+                "@s": "21",
+                "@e": "26",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "2"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "2"
+                    }
+                  ]
+                },
+                "@id": "2"
+              },
+              {
+                "@s": "28",
+                "@e": "33",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "3"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "4"
+                    }
+                  ]
+                },
+                "@id": "3"
+              },
+              {
+                "@s": "34",
+                "@e": "40",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "4"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "3"
+                    }
+                  ]
+                },
+                "@id": "4"
+              }
+            ]
+          },
+          "tran": {
+            "chars": [
+              {
+                "@s": "2",
+                "@e": "13",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "0"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "0"
+              },
+              {
+                "@s": "16",
+                "@e": "18",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "1"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "1"
+                    }
+                  ]
+                },
+                "@id": "1"
+              },
+              {
+                "@s": "18",
+                "@e": "20",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "2"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "2"
+                    }
+                  ]
+                },
+                "@id": "2"
+              },
+              {
+                "@s": "21",
+                "@e": "24",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "4"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "3"
+                    }
+                  ]
+                },
+                "@id": "3"
+              },
+              {
+                "@s": "24",
+                "@e": "26",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "3"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "4"
+                    }
+                  ]
+                },
+                "@id": "4"
+              }
+            ]
+          }
+        },
+        "url": "youdao",
+        "sentence-speech": "theboldlife+%E2%80%93+Hello+World.+Happy+Monday.&le=eng"
+      },
+      {
+        "sentence": "The original message printed is \"HeLlO WoRlD\".",
+        "sentence-eng": "The original message printed is \"<b>HeLlO</b> <b>WoRlD</b>\".",
+        "sentence-translation": "最初打印的消息是“HeLlO WoRlD”。",
+        "speech-size": "13kb",
+        "aligned-words": {
+          "src": {
+            "chars": [
+              {
+                "@s": "1",
+                "@e": "13",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "0"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "0"
+              },
+              {
+                "@s": "14",
+                "@e": "21",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "1"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "2"
+                    }
+                  ]
+                },
+                "@id": "1"
+              },
+              {
+                "@s": "22",
+                "@e": "29",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "2"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "1"
+                    }
+                  ]
+                },
+                "@id": "2"
+              },
+              {
+                "@s": "30",
+                "@e": "32",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "3"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "3"
+                    }
+                  ]
+                },
+                "@id": "3"
+              },
+              {
+                "@s": "34",
+                "@e": "39",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "4"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "4"
+                    }
+                  ]
+                },
+                "@id": "4"
+              }
+            ]
+          },
+          "tran": {
+            "chars": [
+              {
+                "@s": "1",
+                "@e": "3",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "0"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "0"
+              },
+              {
+                "@s": "3",
+                "@e": "5",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "2"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "1"
+                    }
+                  ]
+                },
+                "@id": "1"
+              },
+              {
+                "@s": "6",
+                "@e": "8",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "1"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "2"
+                    }
+                  ]
+                },
+                "@id": "2"
+              },
+              {
+                "@s": "8",
+                "@e": "9",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "3"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "3"
+                    }
+                  ]
+                },
+                "@id": "3"
+              },
+              {
+                "@s": "10",
+                "@e": "15",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "4"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "4"
+                    }
+                  ]
+                },
+                "@id": "4"
+              }
+            ]
+          }
+        },
+        "url": "youdao",
+        "sentence-speech": "The+original+message+printed+is+%22HeLlO+WoRlD%22.&le=eng"
+      },
+      {
+        "sentence": "Suppose you create a \"Hello world\" shell script.",
+        "sentence-eng": "Suppose you create a \"<b>Hello</b> <b>world</b>\" shell script.",
+        "sentence-translation": "假设您创建一个“Hello world”的shell脚本。",
+        "speech-size": "14kb",
+        "aligned-words": {
+          "src": {
+            "chars": [
+              {
+                "@s": "1",
+                "@e": "8",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "0"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "0"
+              },
+              {
+                "@s": "9",
+                "@e": "12",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "1"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "1"
+                    }
+                  ]
+                },
+                "@id": "1"
+              },
+              {
+                "@s": "13",
+                "@e": "19",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "2"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "2"
+                    }
+                  ]
+                },
+                "@id": "2"
+              },
+              {
+                "@s": "20",
+                "@e": "21",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "3"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "3"
+                    }
+                  ]
+                },
+                "@id": "3"
+              },
+              {
+                "@s": "23",
+                "@e": "28",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "4"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "4"
+                    }
+                  ]
+                },
+                "@id": "4"
+              },
+              {
+                "@s": "36",
+                "@e": "41",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "6"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "6"
+              },
+              {
+                "@s": "42",
+                "@e": "48",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "7"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "5"
+                    }
+                  ]
+                },
+                "@id": "7"
+              }
+            ]
+          },
+          "tran": {
+            "chars": [
+              {
+                "@s": "1",
+                "@e": "3",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "0"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "0"
+                    }
+                  ]
+                },
+                "@id": "0"
+              },
+              {
+                "@s": "3",
+                "@e": "4",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "1"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "1"
+                    }
+                  ]
+                },
+                "@id": "1"
+              },
+              {
+                "@s": "4",
+                "@e": "6",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "2"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "2"
+                    }
+                  ]
+                },
+                "@id": "2"
+              },
+              {
+                "@s": "6",
+                "@e": "8",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "3"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "3"
+                    }
+                  ]
+                },
+                "@id": "3"
+              },
+              {
+                "@s": "9",
+                "@e": "14",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "4"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "4"
+                    }
+                  ]
+                },
+                "@id": "4"
+              },
+              {
+                "@s": "22",
+                "@e": "27",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "6"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "5"
+                    }
+                  ]
+                },
+                "@id": "5"
+              },
+              {
+                "@s": "27",
+                "@e": "29",
+                "aligns": {
+                  "sc": [
+                    {
+                      "@id": "7"
+                    }
+                  ],
+                  "tc": [
+                    {
+                      "@id": "6"
+                    }
+                  ]
+                },
+                "@id": "6"
+              }
+            ]
+          }
+        },
+        "url": "youdao",
+        "sentence-speech": "Suppose+you+create+a+%22Hello+world%22+shell+script.&le=eng"
+      }
+    ],
+    "more": "blng_sents"
+  },
+  "input": "hello world",
+  "meta": {
+    "input": "hello world",
+    "guessLanguage": "eng",
+    "isHasSimpleDict": "1",
+    "le": "en",
+    "lang": "eng",
+    "dicts": [
+      "web_trans",
+      "ee",
+      "blng_sents_part",
+      "meta",
+      "auth_sents_part",
+      "simple",
+      "media_sents_part",
+      "wikipedia_digest",
+      "ec"
+    ]
+  },
+  "auth_sents_part": {
+    "sentence-count": 6,
+    "more": "auth_sents",
+    "sent": [
+      {
+        "score": 0.8271684050559998,
+        "speech": "Get+your+eclipse+installation+fully+pumped+up%3A+python+dev+tools%2C+c+dev+tools%2C+any+other+language+you+could+ever+write+in%2C+and+make+sure+you+can+write+a+hello+world+successfully+in+each+perspective.+",
+        "speech-size": "57kb",
+        "source": "FORBES: <i>What Are Some Useful Technical Skills I Can Learn Within A Day?</i>",
+        "url": "youdao",
+        "foreign": "Get your eclipse installation fully pumped up: python dev tools, c dev tools, any other language you could ever write in, and make sure you can write a <b>hello</b> <b>world</b> successfully in each perspective. "
+      },
+      {
+        "score": 0.8651854991912842,
+        "speech": "But+as+we+travel+deeper+into+this+new+world+of+constant+connectedness+and+ever-present+technology%2C+I+wonder+whether+we+are+saying+hello+to+the+world+or+goodbye+to+society.+",
+        "speech-size": "52kb",
+        "source": "FORBES: <i>Hello World, Goodbye Society?</i>",
+        "url": "youdao",
+        "foreign": "But as we travel deeper into this new <b>world</b> of constant connectedness and ever-present technology, I wonder whether we are saying <b>hello</b> to the <b>world</b> or goodbye to society. "
+      },
+      {
+        "score": 0.9385254383087158,
+        "speech": "In+Hello+Nasty+I+found+a+secret+little+world+of+comfort+and+joy.+",
+        "speech-size": "21kb",
+        "source": "FORBES: <i>R.I.P. Beastie Boys' Adam Yauch</i>",
+        "url": "youdao",
+        "foreign": "In <b>Hello</b> Nasty I found a secret little <b>world</b> of comfort and joy. "
+      }
+    ]
+  },
+  "le": "en",
+  "simple": {
+    "query": "hello world",
+    "word": [
+      {
+        "speech": "hello+world",
+        "return-phrase": "hello world"
+      }
+    ]
+  },
+  "media_sents_part": {
+    "query": "hello world",
+    "sent": [
+      {
+        "@mediatype": "video",
+        "snippets": {
+          "snippet": [
+            {
+              "sourceUrl": "youdao",
+              "streamUrl": "movie=http://dict.youdao.com/purevideo?docid=511196752199502203&auto=true",
+              "swf": "http://shared.ydstatic.com/dict/4.0/simplayer.swf",
+              "imageUrl": "http://dict.youdao.com/pureimage?docid=511196752199502203",
+              "name": "哈佛公开课",
+              "source": "计算机科学课程节选"
+            }
+          ]
+        },
+        "chn": "这堂课最后,如果我们只是看几个小程序，根本没啥用,还不如<b>hello</b>，<b>world</b>程序呢。<br>",
+        "eng": "So we looked at a number of fairly small programs that at the end of the day did very little more than print <b>hello </b><b>world</b> and the like.<br>"
+      },
+      {
+        "@mediatype": "video",
+        "snippets": {
+          "snippet": [
+            {
+              "sourceUrl": "youdao",
+              "streamUrl": "movie=http://dict.youdao.com/purevideo?docid=-7413877831235127097&auto=true",
+              "swf": "http://shared.ydstatic.com/dict/4.0/simplayer.swf",
+              "imageUrl": "http://dict.youdao.com/pureimage?docid=-7413877831235127097",
+              "name": "哈佛公开课",
+              "source": "计算机科学课程节选"
+            }
+          ]
+        },
+        "chn": "不过一旦你们写了一个“<b>hello</b>，<b>world</b>“程序“,并且把它保存为<b>hello</b>，c文件后退出。<br>",
+        "eng": "But once you've written a program, \"<b>hello </b><b>world</b>,\" in a file called <b>hello</b>.c, you Save and Quit.<br>"
+      },
+      {
+        "@mediatype": "video",
+        "snippets": {
+          "snippet": [
+            {
+              "sourceUrl": "youdao",
+              "streamUrl": "movie=http://dict.youdao.com/purevideo?docid=6552722828742065573&auto=true",
+              "swf": "http://shared.ydstatic.com/dict/4.0/simplayer.swf",
+              "imageUrl": "http://dict.youdao.com/pureimage?docid=6552722828742065573",
+              "name": "哈佛公开课",
+              "source": "计算机科学课程节选"
+            }
+          ]
+        },
+        "chn": "这只是某种“<b>hello</b>，<b>world</b>“程序,即计算机界最简单的程序样例。<br>",
+        "eng": "It's sort of the canonical <b>hello </b><b>world</b> program as computer scientists call this very simple example.<br>"
+      }
+    ]
+  },
+  "wikipedia_digest": {
+    "summarys": [
+      {
+        "summary": "A \"Hello, World!\" program is a computer program that outputs \"Hello, World!\" (or some variant thereof) on a display device. Because it is typically one of the simplest programs possible in most programming languages, it is by tradition often used to illustrate to beginners the most basic syntax of a programming language. It is also used to verify that a language or system is operating correctly.",
+        "key": "Hello World"
+      }
+    ],
+    "source": {
+      "name": "维基百科",
+      "url": "http://en.wikipedia.org/wiki/Hello_World"
+    }
+  },
+  "lang": "eng",
+  "ec": {
+    "source": {
+      "name": "有道词典",
+      "url": "https://dict.youdao.com"
+    },
+    "word": [
+      {
+        "trs": [
+          {
+            "tr": [
+              {
+                "l": {
+                  "sentence": [
+                    {
+                      "enShow": "The programmer wrote a simple '<b>hello world</b>' program to test the new language.",
+                      "en": "The programmer wrote a simple 'hello world' program to test the new language.",
+                      "type": "双语例句-《精编例句》",
+                      "zh": "程序员编写了一个简单的“你好，世界”程序来测试这种新语言。"
+                    }
+                  ],
+                  "i": [
+                    "你好，世界：一个用于展示编程语言基本语法和结构的示例程序。"
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "speech": "hello+world",
+        "return-phrase": {
+          "l": {
+            "i": "hello world"
+          }
+        }
+      }
+    ]
+  }
+}

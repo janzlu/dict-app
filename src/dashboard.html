@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Wordbook</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">DictApp</div>
+        <nav>
+            <a href="#" class="active" id="navWords" data-i18n="nav_wordbook">Wordbook</a>
+            <a href="#" id="navSettings" data-i18n="nav_settings">Settings & Sync</a>
+        </nav>
+    </div>
+    
+    <div class="main-content">
+        <!-- Wordbook View -->
+        <div id="viewWords" class="view active">
+            <header>
+                <h1 data-i18n="title_wordbook">Wordbook Asset</h1>
+                <div class="stats">
+                    Total: <span id="totalWords">0</span> | Mastered: <span id="masteredWords">0</span>
+                </div>
+            </header>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-i18n="th_word">Word</th>
+                            <th data-i18n="th_translation">Translation</th>
+                            <th data-i18n="th_mastery">Mastery</th>
+                            <th data-i18n="th_next_review">Next Review</th>
+                            <th data-i18n="th_action">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wordTableBody">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="pagination-container" id="paginationControls" style="display: none;">
+                <button id="btnPrevPage" class="btn secondary" data-i18n="btn_prev">Previous</button>
+                <span id="pageIndicator">Page 1 of 1</span>
+                <button id="btnNextPage" class="btn secondary" data-i18n="btn_next">Next</button>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="viewSettings" class="view">
+            <header>
+                <h1>Settings & Cloud Sync</h1>
+            </header>
+            
+            <div class="settings-card">
+                <h3 data-i18n="title_settings">Zero Server Sync</h3>
+                <p class="description" data-i18n="desc_settings">Select a folder inside your cloud drive (e.g. OneDrive, Dropbox) to keep your devices in sync fully automatically.</p>
+                
+                <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_language">Interface Language</label>
+                    <div class="input-row">
+                        <select id="languageSelect" style="padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border); flex: 1;">
+                            <option value="en">English</option>
+                            <option value="zh">简体中文 (Simplified Chinese)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_autostart">Start on Boot</label>
+                    <div class="input-row" style="align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                        <input type="checkbox" id="autoStartCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;">
+                        <span style="font-size: 14px; color: var(--text-secondary); cursor: pointer;" data-i18n="desc_autostart" onclick="document.getElementById('autoStartCheckbox').click()">Launch DictApp silently in the tray when you sign in</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_autopopup">Clipboard Auto-Pop</label>
+                    <div class="input-row" style="align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                        <input type="checkbox" id="autoPopupCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;" checked>
+                        <span style="font-size: 14px; color: var(--text-secondary); cursor: pointer;" data-i18n="desc_autopopup" onclick="document.getElementById('autoPopupCheckbox').click()">Automatically show Spotlight when text is copied</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_shortcut">Spotlight Global Shortcut</label>
+                    <div class="input-row">
+                        <input type="text" id="shortcutInput" value="CommandOrControl+Shift+D" placeholder="e.g. CommandOrControl+Shift+D">
+                        <button id="btnSaveShortcut" class="btn primary" data-i18n="btn_save_shortcut">Save Shortcut</button>
+                    </div>
+                    <small style="color: var(--text-secondary); font-size: 12px; margin-top: 6px; display: block;" data-i18n="hint_shortcut">Modifiers: Command, Control, Alt, Shift. Example: Alt+Space</small>
+                </div>
+
+                <div class="form-group">
+                    <label style="display:flex; align-items:center;">
+                        <span data-i18n="label_sync_path">Sync Folder Path</span>
+                        <span class="help-icon" id="openSyncHelp" title="How to use sync?">?</span>
+                    </label>
+                    <div class="input-row">
+                        <input type="text" id="syncPathInput" readonly placeholder="No sync folder selected">
+                        <button id="btnSelectFolder" class="btn primary" data-i18n="btn_select_folder">Select Folder</button>
+                    </div>
+                </div>
+                
+                <div class="status-box">
+                    <strong data-i18n="status_prefix">Status:</strong> <span id="syncStatusText">Not configured</span>
+                </div>
+
+                <div class="actions">
+                    <button id="btnForceSync" class="btn secondary" data-i18n="btn_force_sync">Force Sync Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="syncHelpModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="help_title">如何使用跨设备免服务同步？</h2>
+                <button id="closeSyncHelp" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" data-i18n="help_content">
+                <p>DictApp 采用了极其顶尖的 <strong>Local-First（本地优先）无损网盘同步架构</strong>。你不需要购买任何昂贵的服务器，只需利用你现有的网盘客户端（如 OneDrive、坚果云、Dropbox、百度网盘等）。</p>
+                <ol>
+                    <li>在你的电脑上安装任意主流 <strong>网盘客户端</strong>，并确保它在后台运行。</li>
+                    <li>在网盘的同步盘目录下（例如 <code>D:\OneDrive\</code>），新建一个专门的文件夹，比如命名为 <code>DictApp_Sync</code>。</li>
+                    <li>点击下方 <strong>[选择文件夹]</strong> 按钮，选中刚创建的这个目录即可。</li>
+                    <li><strong>如何多设备同步？</strong> 在你的第二台电脑上（如公司电脑），重复上述操作，定位到同一个通过网盘同步过来的那个文件夹。</li>
+                </ol>
+                <p style="margin-top: 16px; border-left: 3px solid var(--accent); padding-left: 12px;">系统会在每次运行或数据变动时，自动生成底层映射缓存供跨设备静默合并。绝对不会锁死或损坏你的本地 SQLite 核心词库数据，请放心使用！</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

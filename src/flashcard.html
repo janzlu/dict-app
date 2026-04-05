@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flashcard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="flashcard.css">
+</head>
+<body>
+    <div class="flashcard" id="card">
+        <button class="close-btn" id="closeBtn">X</button>
+        
+        <div class="word" id="wordBox">hello</div>
+        <div class="phonetic" id="phoneticBox">/həˈləʊ/</div>
+        <div class="translation" id="transBox">int. 喂；哈罗</div>
+        
+        <div class="buttons" id="btnGroup">
+            <button class="btn forgot" data-score="1">忘记 (1)</button>
+            <button class="btn hard" data-score="2">困难 (2)</button>
+            <button class="btn good" data-score="3">良好 (3)</button>
+            <button class="btn easy" data-score="4">简单 (4)</button>
+        </div>
+    </div>
+    
+    <script src="flashcard.js"></script>
+</body>
+</html>
