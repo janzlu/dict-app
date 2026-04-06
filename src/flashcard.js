@@ -7,6 +7,9 @@ const closeBtn = document.getElementById('closeBtn');
 
 let currentWordData = null;
 
+let slideshowFlipTimer = null;
+let slideshowNextTimer = null;
+
 // The main process will send a word to review
 window.api.onReviewWord((wordData) => {
     currentWordData = wordData;
@@ -14,6 +17,29 @@ window.api.onReviewWord((wordData) => {
     phoneticBox.textContent = wordData.phonetic ? `/${wordData.phonetic}/` : '';
     transBox.textContent = wordData.translation;
     card.classList.remove('flipped');
+    
+    // Reset any existing timers
+    clearTimeout(slideshowFlipTimer);
+    clearTimeout(slideshowNextTimer);
+
+    if (wordData.isSlideshow) {
+        btnGroup.style.display = 'none'; // strictly hide buttons
+        
+        // Auto flip after 2 seconds
+        slideshowFlipTimer = setTimeout(() => {
+            card.classList.add('flipped');
+            
+            // Auto fetch next word after 3 seconds of showing meaning
+            slideshowNextTimer = setTimeout(() => {
+                if (window.api.slideshowNext) {
+                    window.api.slideshowNext();
+                }
+            }, 3000);
+        }, 2000);
+        
+    } else {
+        btnGroup.style.display = 'flex'; // show normal interact buttons
+    }
 });
 
 let isDragging = false;

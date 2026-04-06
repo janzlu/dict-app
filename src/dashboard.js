@@ -37,6 +37,7 @@ const locales = {
         label_language: "Interface Language",
         btn_del: "Del",
         btn_shuffle: "🎲 Shuffle Play",
+        btn_slideshow: "📺 Auto Slideshow",
         label_theme: "Interface Theme",
         theme_dark: "Dark Mode (Default)",
         theme_light: "Light Mode",
@@ -69,6 +70,7 @@ const locales = {
         label_language: "客户端界面展现语言",
         btn_del: "删除条目",
         btn_shuffle: "🎲 碎片时间随机复习",
+        btn_slideshow: "📺 自动随机轮播",
         label_theme: "客户端 UI 主题色彩",
         theme_dark: "深色幽能模式 (默认)",
         theme_light: "高亮柔和模式",
@@ -115,12 +117,17 @@ if (languageSelect) {
 const shortcutInput = document.getElementById('shortcutInput');
 const btnSaveShortcut = document.getElementById('btnSaveShortcut');
 const btnShufflePlay = document.getElementById('btnShufflePlay');
+const btnAutoSlideshow = document.getElementById('btnAutoSlideshow');
 
 if (btnShufflePlay) {
     btnShufflePlay.addEventListener('click', () => {
-        if (window.api.startShufflePlay) {
-            window.api.startShufflePlay();
-        }
+        if (window.api.startShufflePlay) window.api.startShufflePlay();
+    });
+}
+
+if (btnAutoSlideshow) {
+    btnAutoSlideshow.addEventListener('click', () => {
+        if (window.api.startAutoSlideshow) window.api.startAutoSlideshow();
     });
 }
 

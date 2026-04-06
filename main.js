@@ -517,11 +517,26 @@ if (!gotTheLock) {
         });
 
         let isManualReviewMode = false;
+        let isAutoSlideshowMode = false;
 
         ipcMain.on('start-shuffle-play', () => {
             console.log("Starting Shuffle Play...");
             isManualReviewMode = true;
+            isAutoSlideshowMode = false;
             checkReviewQueue();
+        });
+
+        ipcMain.on('start-auto-slideshow', () => {
+            console.log("Starting Auto Slideshow...");
+            isAutoSlideshowMode = true;
+            isManualReviewMode = false;
+            checkReviewQueue();
+        });
+
+        ipcMain.on('slideshow-next', () => {
+            if (isAutoSlideshowMode) {
+                checkReviewQueue();
+            }
         });
 
         // [AUDIT V1.7.0]: Restored 30s Ebbinghaus auto-timer + Manual Shuffle Play logic
@@ -536,24 +551,31 @@ if (!gotTheLock) {
             let word = stmt.get(nowIso);
             
             // If manual trigger and no strictly due words, pick ANY un-mastered word randomly
-            if (!word && isManualReviewMode) {
-                const fallbackStmt = db.prepare(`SELECT * FROM words WHERE mastery_level < 5 ORDER BY RANDOM() LIMIT 1`);
+            // In Slideshow Mode, any word at all can be reviewed (loop endlessly like a screensaver)
+            if (!word && (isManualReviewMode || isAutoSlideshowMode)) {
+                let query = isAutoSlideshowMode ? `SELECT * FROM words ORDER BY RANDOM() LIMIT 1` : `SELECT * FROM words WHERE mastery_level < 5 ORDER BY RANDOM() LIMIT 1`;
+                const fallbackStmt = db.prepare(query);
                 word = fallbackStmt.get();
             }
             
             if (word) {
                 // Ignore if Spotlight is currently active to not distract user
-                if (inputWindow.isVisible()) return;
+                if (inputWindow.isVisible() && !isManualReviewMode && !isAutoSlideshowMode) return;
 
                 if (!flashcardWindow.isVisible()) {
-                    if (isManualReviewMode) flashcardWindow.show();
+                    if (isManualReviewMode || isAutoSlideshowMode) flashcardWindow.show();
                     else flashcardWindow.showInactive(); 
                 }
-                if (isManualReviewMode) flashcardWindow.focus();
+                
+                // Do not steal focus for slideshows so users can just keep doing their work!
+                if (isManualReviewMode && !isAutoSlideshowMode) flashcardWindow.focus();
+                
+                // Attach the mode flag to inform the renderer
+                word.isSlideshow = isAutoSlideshowMode;
                 flashcardWindow.webContents.send('review-word', word);
             } else {
                 flashcardWindow.hide();
-                // ONLY show the "All Clear" alert if the user explicitly manually requested a review
+                // ONLY show the "All Clear" alert if the user explicitly manually requested a shuffle review
                 if (isManualReviewMode) {
                     dialog.showMessageBox({
                         type: 'info',
@@ -562,16 +584,25 @@ if (!gotTheLock) {
                     });
                 }
                 isManualReviewMode = false; // Reset mode
+                isAutoSlideshowMode = false;
             }
         }
 
         // Silent background Ebbinghaus curve runner (Never enters manual mode)
         setInterval(() => {
             const cfg = syncEngine.getConfig(app) || {};
-            if (cfg.autoReviewEnabled !== false && !isManualReviewMode) {
+            // Only fire autotimer if we aren't currently occupying the flashcard window
+            if (cfg.autoReviewEnabled !== false && !isManualReviewMode && !isAutoSlideshowMode) {
                 checkReviewQueue();
             }
         }, 30000);
+
+        // ... when closing window manually
+        ipcMain.on('hide-flashcard', () => {
+            flashcardWindow.hide();
+            isManualReviewMode = false;
+            isAutoSlideshowMode = false;
+        });
 
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) {

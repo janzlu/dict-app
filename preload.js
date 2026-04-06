@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('api', {
     getTheme: () => ipcRenderer.invoke('get-theme'),
     setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
     startShufflePlay: () => ipcRenderer.send('start-shuffle-play'),
+    startAutoSlideshow: () => ipcRenderer.send('start-auto-slideshow'),
+    slideshowNext: () => ipcRenderer.send('slideshow-next'),
     
     // Auto-clipboard
     onClipboardData: (callback) => ipcRenderer.on('clipboard-data', (e, text) => callback(text))
