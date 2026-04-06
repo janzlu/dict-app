@@ -46,19 +46,55 @@ body {
 /* Sidebar */
 .sidebar {
     width: 240px;
-    background: var(--bg-sidebar);
+    background: linear-gradient(160deg, #151120 0%, #121214 40%, #0d0d12 100%);
     border-right: 1px solid var(--border);
     padding: 24px;
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Ambient glow effects for sidebar */
+.sidebar::before {
+    content: '';
+    position: absolute;
+    width: 250px;
+    height: 250px;
+    background: rgba(0, 210, 255, 0.06);
+    filter: blur(60px);
+    top: -100px;
+    left: -100px;
+    border-radius: 50%;
+    pointer-events: none;
+}
+.sidebar::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: rgba(160, 32, 240, 0.04);
+    filter: blur(70px);
+    bottom: -150px;
+    right: -100px;
+    border-radius: 50%;
+    pointer-events: none;
 }
 
 .logo {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 24px;
+    font-weight: 800;
     margin-bottom: 40px;
-    color: var(--accent);
+    background: linear-gradient(to right, #00d2ff, #a020f0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 10;
 }
+
+nav { position: relative; z-index: 10; }
 
 nav a {
     display: block;
@@ -68,16 +104,19 @@ nav a {
     border-radius: 8px;
     margin-bottom: 8px;
     transition: 0.2s ease;
+    position: relative;
+    z-index: 10;
 }
 
 nav a:hover {
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 nav a.active {
-    background: rgba(0, 210, 255, 0.1);
-    color: var(--accent);
-    font-weight: 500;
+    background: linear-gradient(90deg, rgba(0, 210, 255, 0.15) 0%, rgba(0, 210, 255, 0) 100%);
+    color: var(--text-primary);
+    font-weight: 600;
+    border-left: 3px solid var(--accent);
 }
 
 /* Main Content */
