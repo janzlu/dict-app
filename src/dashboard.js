@@ -15,6 +15,8 @@ const btnForceSync = document.getElementById('btnForceSync');
 // i18n
 const locales = {
     en: {
+        title_dashboard: "Dashboard - DictApp",
+        logo: "DictApp",
         nav_wordbook: "Wordbook",
         nav_settings: "Settings & Sync",
         title_wordbook: "Wordbook Asset",
@@ -40,6 +42,8 @@ const locales = {
         desc_autopopup: "Automatically show Spotlight when a short English text is copied"
     },
     zh: {
+        title_dashboard: "控制台 - 沉浸翻译助手",
+        logo: "沉浸翻译助手",
         nav_wordbook: "生词本",
         nav_settings: "设置与同步",
         title_wordbook: "生词本总览",
