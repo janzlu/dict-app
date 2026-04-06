@@ -503,12 +503,15 @@ if (!gotTheLock) {
             }
         });
 
+        let isManualReviewMode = false;
+
         ipcMain.on('start-shuffle-play', () => {
             console.log("Starting Shuffle Play...");
+            isManualReviewMode = true;
             checkReviewQueue();
         });
 
-        // [AUDIT V1.7.0]: Manual Shuffle Play logic with fallbacks
+        // [AUDIT V1.7.0]: Restored 30s Ebbinghaus auto-timer + Manual Shuffle Play logic
         function checkReviewQueue() {
             // First try to find strictly due words
             const nowIso = new Date().toISOString();
@@ -519,28 +522,40 @@ if (!gotTheLock) {
             `);
             let word = stmt.get(nowIso);
             
-            // If no due words, fallback to any word that is not fully mastered
-            if (!word) {
+            // If manual trigger and no strictly due words, pick ANY un-mastered word randomly
+            if (!word && isManualReviewMode) {
                 const fallbackStmt = db.prepare(`SELECT * FROM words WHERE mastery_level < 5 ORDER BY RANDOM() LIMIT 1`);
                 word = fallbackStmt.get();
             }
             
             if (word) {
-                // Since this is manually triggered (or chained), we can safely focus it now
+                // Ignore if Spotlight is currently active to not distract user
+                if (inputWindow.isVisible()) return;
+
                 if (!flashcardWindow.isVisible()) {
-                    flashcardWindow.show(); 
+                    if (isManualReviewMode) flashcardWindow.show();
+                    else flashcardWindow.showInactive(); 
                 }
-                flashcardWindow.focus();
+                if (isManualReviewMode) flashcardWindow.focus();
                 flashcardWindow.webContents.send('review-word', word);
             } else {
                 flashcardWindow.hide();
-                dialog.showMessageBox({
-                    type: 'info',
-                    title: 'Lumina - All Clear',
-                    message: 'Great job! You have fully mastered all the words in your wordbook.'
-                });
+                // ONLY show the "All Clear" alert if the user explicitly manually requested a review
+                if (isManualReviewMode) {
+                    dialog.showMessageBox({
+                        type: 'info',
+                        title: 'Lumina - All Clear',
+                        message: 'Great job! You have fully mastered all the words in your wordbook.'
+                    });
+                }
+                isManualReviewMode = false; // Reset mode
             }
         }
+
+        // Silent background Ebbinghaus curve runner (Never enters manual mode)
+        setInterval(() => {
+            if (!isManualReviewMode) checkReviewQueue();
+        }, 30000);
 
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) {
