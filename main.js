@@ -39,9 +39,9 @@ if (!gotTheLock) {
             { label: 'Search Word (Ctrl+Shift+D)', click: () => { inputWindow.show(); inputWindow.focus(); } },
             { label: 'Dashboard & Sync', click: () => openDashboard() },
             { type: 'separator' },
-            { label: 'Quit DictApp', click: () => { app.isQuitting = true; app.quit(); } }
+            { label: 'Quit Lumina', click: () => { app.isQuitting = true; app.quit(); } }
         ]);
-        tray.setToolTip('Dict App');
+        tray.setToolTip('Lumina');
         tray.setContextMenu(contextMenu);
         
         tray.on('double-click', () => {
@@ -162,7 +162,7 @@ if (!gotTheLock) {
                     { label: `Search Word (${accelerator})`, click: () => { inputWindow.show(); inputWindow.focus(); } },
                     { label: 'Dashboard & Sync', click: () => openDashboard() },
                     { type: 'separator' },
-                    { label: 'Quit DictApp', click: () => { app.isQuitting = true; app.quit(); } }
+                    { label: 'Quit Lumina', click: () => { app.isQuitting = true; app.quit(); } }
                 ]);
                 tray.setContextMenu(contextMenu);
                 

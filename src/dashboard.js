@@ -15,8 +15,8 @@ const btnForceSync = document.getElementById('btnForceSync');
 // i18n
 const locales = {
     en: {
-        title_dashboard: "Dashboard - DictApp",
-        logo: "DictApp",
+        title_dashboard: "Dashboard - Lumina",
+        logo: "Lumina",
         nav_wordbook: "Wordbook",
         nav_settings: "Settings & Sync",
         title_wordbook: "Wordbook Asset",
@@ -37,13 +37,13 @@ const locales = {
         label_language: "Interface Language",
         btn_del: "Del",
         label_autostart: "Start on Boot",
-        desc_autostart: "Launch DictApp silently in the tray when you sign in",
+        desc_autostart: "Launch Lumina silently in the tray when you sign in",
         label_autopopup: "Clipboard Auto-Pop",
         desc_autopopup: "Automatically show Spotlight when a short English text is copied"
     },
     zh: {
-        title_dashboard: "控制台 - 沉浸翻译助手",
-        logo: "沉浸翻译助手",
+        title_dashboard: "控制台 - 识光",
+        logo: "识光",
         nav_wordbook: "生词本",
         nav_settings: "设置与同步",
         title_wordbook: "生词本总览",
