@@ -508,28 +508,37 @@ if (!gotTheLock) {
             checkReviewQueue();
         });
 
-        // Background Timer for Reviews (check every 30 seconds)
-        // [AUDIT V1.7.0]: Replaced intrusive 30s timer with manual Shuffle Play logic
+        // [AUDIT V1.7.0]: Manual Shuffle Play logic with fallbacks
         function checkReviewQueue() {
-            // Find words due for review (or highly requested, limit 1)
-            const stmt = db.prepare(`
+            // First try to find strictly due words
+            const nowIso = new Date().toISOString();
+            let stmt = db.prepare(`
                 SELECT * FROM words 
-                WHERE next_review_time IS NULL OR next_review_time <= CURRENT_TIMESTAMP 
+                WHERE next_review_time IS NULL OR next_review_time <= ?
                 ORDER BY RANDOM() LIMIT 1
             `);
-            const word = stmt.get();
+            let word = stmt.get(nowIso);
+            
+            // If no due words, fallback to any word that is not fully mastered
+            if (!word) {
+                const fallbackStmt = db.prepare(`SELECT * FROM words WHERE mastery_level < 5 ORDER BY RANDOM() LIMIT 1`);
+                word = fallbackStmt.get();
+            }
             
             if (word) {
-                // Ignore if Spotlight is currently active to not distract user
-                if (inputWindow.isVisible()) return;
-
+                // Since this is manually triggered (or chained), we can safely focus it now
                 if (!flashcardWindow.isVisible()) {
-                    flashcardWindow.showInactive(); // Show without stealing focus
+                    flashcardWindow.show(); 
                 }
+                flashcardWindow.focus();
                 flashcardWindow.webContents.send('review-word', word);
             } else {
                 flashcardWindow.hide();
-                // We could optionally send a Toast here saying "You've finished all reviews!"
+                dialog.showMessageBox({
+                    type: 'info',
+                    title: 'Lumina - All Clear',
+                    message: 'Great job! You have fully mastered all the words in your wordbook.'
+                });
             }
         }
 
