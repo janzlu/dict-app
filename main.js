@@ -58,6 +58,7 @@ if (!gotTheLock) {
             alwaysOnTop: true,
             skipTaskbar: true,
             show: false, // Hidden by default until hotkey pressed
+            icon: iconPath,
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
@@ -83,6 +84,7 @@ if (!gotTheLock) {
                 width: 1050,
                 height: 720,
                 autoHideMenuBar: true,
+                icon: iconPath,
                 webPreferences: {
                     nodeIntegration: false,
                     contextIsolation: true,
@@ -105,6 +107,7 @@ if (!gotTheLock) {
             alwaysOnTop: true,
             skipTaskbar: true,
             show: false,
+            icon: iconPath,
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
