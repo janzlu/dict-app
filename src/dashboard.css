@@ -86,12 +86,13 @@ body {
         background: rgba(0, 0, 0, 0.04);
     }
     
-    input[type="text"], select {
+    input[type="text"], select, .input-row.checkbox-wrapper {
         background: #ffffff;
         color: #1d1d1f;
+        border-color: #d2d2d7;
     }
     
-    .status-box, .input-row {
+    .status-box {
         background: #ffffff;
     }
     
@@ -269,6 +270,30 @@ input[type="text"] {
     border-radius: 6px;
     color: white;
     font-family: inherit;
+}
+input[type="text"][readonly] {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.input-row.checkbox-wrapper {
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.2);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.2);
+    color: white;
+    border: 1px solid var(--border);
+    flex: 1;
+    font-family: inherit;
+    outline: none;
 }
 
 .btn {

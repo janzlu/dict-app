@@ -63,7 +63,7 @@
                 <div class="form-group" style="margin-bottom: 30px;">
                     <label data-i18n="label_language">Interface Language</label>
                     <div class="input-row">
-                        <select id="languageSelect" style="padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border); flex: 1;">
+                        <select id="languageSelect">
                             <option value="en">English</option>
                             <option value="zh">简体中文 (Simplified Chinese)</option>
                         </select>
@@ -71,8 +71,19 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_theme">Interface Theme</label>
+                    <div class="input-row">
+                        <select id="themeSelect">
+                            <option value="dark" data-i18n="theme_dark">Dark Mode (Default)</option>
+                            <option value="light" data-i18n="theme_light">Light Mode</option>
+                            <option value="system" data-i18n="theme_system">Follow OS System</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 30px;">
                     <label data-i18n="label_autostart">Start on Boot</label>
-                    <div class="input-row" style="align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                    <div class="input-row checkbox-wrapper">
                         <input type="checkbox" id="autoStartCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;">
                         <span style="font-size: 14px; color: var(--text-secondary); cursor: pointer;" data-i18n="desc_autostart" onclick="document.getElementById('autoStartCheckbox').click()">Launch Lumina silently in the tray when you sign in</span>
                     </div>
@@ -80,7 +91,7 @@
 
                 <div class="form-group" style="margin-bottom: 30px;">
                     <label data-i18n="label_autopopup">Clipboard Auto-Pop</label>
-                    <div class="input-row" style="align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                    <div class="input-row checkbox-wrapper">
                         <input type="checkbox" id="autoPopupCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;" checked>
                         <span style="font-size: 14px; color: var(--text-secondary); cursor: pointer;" data-i18n="desc_autopopup" onclick="document.getElementById('autoPopupCheckbox').click()">Automatically show Spotlight when text is copied</span>
                     </div>

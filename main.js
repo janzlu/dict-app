@@ -462,6 +462,23 @@ if (!gotTheLock) {
             return enable;
         });
 
+        // Theme Setup
+        let currentThemeConfig = initialConfig.theme || 'dark';
+        nativeTheme.themeSource = currentThemeConfig;
+
+        ipcMain.handle('get-theme', () => {
+            return syncEngine.getConfig(app)?.theme || 'dark';
+        });
+
+        ipcMain.handle('set-theme', (event, themeMode) => {
+            nativeTheme.themeSource = themeMode; // 'dark', 'light', 'system'
+            const currentCfg = syncEngine.getConfig(app) || {};
+            currentCfg.theme = themeMode;
+            syncEngine.setConfig(app, currentCfg);
+            updateTitleBar(); // Update instantly
+            return themeMode;
+        });
+
         // Delete word from DB
         ipcMain.handle('delete-word', (event, id) => {
             try {

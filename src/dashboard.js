@@ -36,6 +36,10 @@ const locales = {
         btn_force_sync: "Force Sync Now",
         label_language: "Interface Language",
         btn_del: "Del",
+        label_theme: "Interface Theme",
+        theme_dark: "Dark Mode (Default)",
+        theme_light: "Light Mode",
+        theme_system: "Follow OS System",
         label_autostart: "Start on Boot",
         desc_autostart: "Launch Lumina silently in the tray when you sign in",
         label_autopopup: "Clipboard Auto-Pop",
@@ -63,6 +67,10 @@ const locales = {
         btn_force_sync: "手动执行硬同步校验",
         label_language: "客户端界面展现语言",
         btn_del: "删除条目",
+        label_theme: "客户端 UI 主题色彩",
+        theme_dark: "深色幽能模式 (默认)",
+        theme_light: "高亮柔和模式",
+        theme_system: "跟随操作系统动态变换",
         label_autostart: "开机自动运行",
         desc_autostart: "系统登录时，自动在后台托盘静默启动此软件引擎",
         label_autopopup: "划词复制唤起",
@@ -252,6 +260,12 @@ async function loadSyncConfig() {
         const isAutoPopup = await window.api.getAutoPopup();
         document.getElementById('autoPopupCheckbox').checked = isAutoPopup;
     }
+
+    if (window.api.getTheme) {
+        const theme = await window.api.getTheme();
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) themeSelect.value = theme;
+    }
 }
 
 document.getElementById('autoStartCheckbox').addEventListener('change', async (e) => {
@@ -265,6 +279,15 @@ document.getElementById('autoPopupCheckbox').addEventListener('change', async (e
         await window.api.setAutoPopup(e.target.checked);
     }
 });
+
+const themeSelect = document.getElementById('themeSelect');
+if (themeSelect) {
+    themeSelect.addEventListener('change', async (e) => {
+        if (window.api.setTheme) {
+            await window.api.setTheme(e.target.value);
+        }
+    });
+}
 
 btnSelectFolder.addEventListener('click', async () => {
     const path = await window.api.selectSyncFolder();
