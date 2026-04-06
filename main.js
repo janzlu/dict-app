@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, dialog, nativeTheme } = require('electron');
 const path = require('path');
 const Database = require('better-sqlite3');
 const { initDb } = require('./utils/db');
@@ -73,6 +73,17 @@ if (!gotTheLock) {
             inputWindow.hide();
         });
 
+        function updateTitleBar() {
+            if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+                const isDark = nativeTheme.shouldUseDarkColors;
+                dashboardWindow.setTitleBarOverlay({
+                    color: isDark ? '#1a1a1a' : '#f5f5f7',
+                    symbolColor: isDark ? '#ffffff' : '#1d1d1f'
+                });
+            }
+        }
+        nativeTheme.on('updated', updateTitleBar);
+
         // 4. Create the Dashboard Window (lazy init)
         function openDashboard() {
             if (dashboardWindow) {
@@ -80,14 +91,15 @@ if (!gotTheLock) {
                 dashboardWindow.focus();
                 return;
             }
+            const isDark = nativeTheme.shouldUseDarkColors;
             dashboardWindow = new BrowserWindow({
                 width: 1050,
                 height: 720,
                 autoHideMenuBar: true,
                 titleBarStyle: 'hidden',
                 titleBarOverlay: {
-                    color: '#1a1a1a', // standard sidebar dark gray match
-                    symbolColor: '#ffffff',
+                    color: isDark ? '#1a1a1a' : '#f5f5f7',
+                    symbolColor: isDark ? '#ffffff' : '#1d1d1f',
                     height: 32
                 },
                 icon: iconPath,
