@@ -468,6 +468,19 @@ if (!gotTheLock) {
             return enable;
         });
 
+        // Auto-review setup
+        ipcMain.handle('get-autoreview', () => {
+            const cfg = syncEngine.getConfig(app) || {};
+            return cfg.autoReviewEnabled !== false; // true by default
+        });
+
+        ipcMain.handle('set-autoreview', (event, enable) => {
+            const currentCfg = syncEngine.getConfig(app) || {};
+            currentCfg.autoReviewEnabled = enable;
+            syncEngine.setConfig(app, currentCfg);
+            return enable;
+        });
+
         // Theme Setup
         let currentThemeConfig = initialConfig.theme || 'dark';
         nativeTheme.themeSource = currentThemeConfig;
@@ -554,7 +567,10 @@ if (!gotTheLock) {
 
         // Silent background Ebbinghaus curve runner (Never enters manual mode)
         setInterval(() => {
-            if (!isManualReviewMode) checkReviewQueue();
+            const cfg = syncEngine.getConfig(app) || {};
+            if (cfg.autoReviewEnabled !== false && !isManualReviewMode) {
+                checkReviewQueue();
+            }
         }, 30000);
 
         app.on('activate', () => {

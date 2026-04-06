@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('api', {
     setAutoStart: (enabled) => ipcRenderer.invoke('set-autostart', enabled),
     getAutoPopup: () => ipcRenderer.invoke('get-autopopup'),
     setAutoPopup: (enabled) => ipcRenderer.invoke('set-autopopup', enabled),
+    getAutoReview: () => ipcRenderer.invoke('get-autoreview'),
+    setAutoReview: (enabled) => ipcRenderer.invoke('set-autoreview', enabled),
     getTheme: () => ipcRenderer.invoke('get-theme'),
     setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
     startShufflePlay: () => ipcRenderer.send('start-shuffle-play'),

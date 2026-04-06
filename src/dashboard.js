@@ -272,6 +272,11 @@ async function loadSyncConfig() {
         document.getElementById('autoPopupCheckbox').checked = isAutoPopup;
     }
 
+    if (window.api.getAutoReview) {
+        const isAutoReview = await window.api.getAutoReview();
+        document.getElementById('autoReviewCheckbox').checked = isAutoReview;
+    }
+
     if (window.api.getTheme) {
         const theme = await window.api.getTheme();
         const themeSelect = document.getElementById('themeSelect');
@@ -288,6 +293,12 @@ document.getElementById('autoStartCheckbox').addEventListener('change', async (e
 document.getElementById('autoPopupCheckbox').addEventListener('change', async (e) => {
     if (window.api.setAutoPopup) {
         await window.api.setAutoPopup(e.target.checked);
+    }
+});
+
+document.getElementById('autoReviewCheckbox').addEventListener('change', async (e) => {
+    if (window.api.setAutoReview) {
+        await window.api.setAutoReview(e.target.checked);
     }
 });
 
