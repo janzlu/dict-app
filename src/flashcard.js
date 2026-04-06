@@ -38,7 +38,7 @@ window.api.onReviewWord((wordData) => {
         }, 2000);
         
     } else {
-        btnGroup.style.display = 'flex'; // show normal interact buttons
+        btnGroup.style.display = ''; // let CSS handle the visibility upon flipping
     }
 });
 
