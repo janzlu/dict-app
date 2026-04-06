@@ -4,11 +4,14 @@
 
 ---
 
-## 现状分析 (Current State)
-*   **当前架构**：Electron + Node.js (better-sqlite3) + React / HTML
-*   **交付形态**：独立桌面客户端（`.exe` / `.dmg`），体量约 `~100 MB`。
-*   **核心优势**：OS 级别的全局环境掌控（剪贴板全局监听、全局快捷键映射），无论是 Word、PDF 阅读器还是企业通信软件（Slack/微信）均可无死角捕获生词。
-*   **痛点瓶颈**：体积受限于自带的 Chromium 内核与 Node 运行环境，无法做到真正的“零感微体积”。
+## 深度架构剖析 (Current Architecture: V1.6.0)
+*   **技术栈构成**：Electron + Node.js (`better-sqlite3`) + Vanilla Web (HTML/CSS/Vanilla JS)。（注：宣传落地页使用 React构建，但客户端核心为原生轻量级前端）。
+*   **交付体量**：独立桌面客户端（`.exe` / `.dmg`），由于内置完整的 Chromium + Node.js 以及原生 C++ SQLite 绑定，基础包体积在 `~100 MB`。
+*   **四大核心底层机制**：
+    1.  **OS 全局穿透体系**：在 `main.js` 中使用 `setInterval` 轻量级轮询 OS 剪贴板（差异化比对），并结合 `globalShortcut`，实现纯后台的零延迟翻译唤醒。不论是 PDF 还是 Slack 都能无死角捕获。
+    2.  **LWW (Last Write Wins) 免服务同步引擎**：抛弃了传统的自建云同步后端。依靠 `utils/sync.js`，将 SQLite 数据以高压缩 `DictMap` 形式热导出为本地 `.json`。通过 `updated_at` 时间戳比对完成本地优先的网盘自动映射（CRDT 雏形实现）。
+    3.  **精简版 SM-2 记忆算法**：在 `utils/sm2.js` 中，将掌握度 (Mastery) 收敛为 0~5 六个阶梯。严格映射为具体的分钟级偏移量（5分钟、1小时、12小时、1天、3天、7天），由后台定时器 `checkReviewQueue` 自动投喂复习。
+    4.  **高并发数据抗压**：数据库层面 (`utils/db.js`) 强制启用了 `PRAGMA journal_mode = WAL`（预写式日志），彻底解决 Electron 主线程同时进行 UI 读取、剪贴板高频插入、定时同步导出时极易发生的 SQLite 文件锁冲突死锁问题。
 
 ---
 
