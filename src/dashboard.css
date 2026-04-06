@@ -8,17 +8,7 @@
     --accent: #00d2ff;
 }
 
-@media (prefers-color-scheme: light) {
-    :root {
-        --bg-main: #f5f5f7;
-        --bg-sidebar: #ffffff;
-        --bg-card: #ffffff;
-        --text-primary: #1d1d1f;
-        --text-secondary: #86868b;
-        --border: #d2d2d7;
-        --accent: #007aff;
-    }
-}
+
 
 body {
     margin: 0;
@@ -70,46 +60,6 @@ body {
     overflow: hidden;
 }
 
-@media (prefers-color-scheme: light) {
-    .sidebar {
-        background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(245, 245, 247, 0.95) 70%), url('hero_bg.png');
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.15);
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 0, 0, 0.25);
-    }
-    
-    th {
-        background: rgba(0, 0, 0, 0.04);
-    }
-    
-    input[type="text"], select, .input-row.checkbox-wrapper {
-        background: #ffffff;
-        color: #1d1d1f;
-        border-color: #d2d2d7;
-    }
-    
-    .status-box {
-        background: #ffffff;
-    }
-    
-    .logo {
-        background: linear-gradient(to right, #007aff, #8000ff);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    nav a.active {
-        background: linear-gradient(90deg, rgba(0, 122, 255, 0.1) 0%, rgba(0, 122, 255, 0) 100%);
-    }
-    nav a:hover:not(.active) {
-        background: rgba(0, 0, 0, 0.05);
-    }
-}
 
 /* Ambient glow effects for sidebar */
 .sidebar::before {
@@ -426,4 +376,122 @@ select {
 }
 .modal-body strong {
     color: var(--text-primary);
+}
+
+/* =========================================
+   LIGHT MODE OVERRIDES (OS NATIVE MATCHING)
+   Must be at the very bottom to ensure CSS cascading precedence
+   ========================================= */
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-main: #f5f5f7;
+        --bg-sidebar: #ffffff;
+        --bg-card: #ffffff;
+        --text-primary: #1d1d1f;
+        --text-secondary: #86868b;
+        --border: #d2d2d7;
+        --accent: #0066cc; /* Deep Apple Blue for readability */
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.25);
+    }
+
+    .sidebar {
+        background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.7) 0%, rgba(245, 245, 247, 0.96) 80%), url('hero_bg.png');
+    }
+
+    .logo {
+        background: linear-gradient(to right, #0055ff, #aa00ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    nav a.active {
+        background: linear-gradient(90deg, rgba(0, 102, 204, 0.1) 0%, rgba(0, 102, 204, 0) 100%);
+    }
+    nav a:hover:not(.active) {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    th {
+        background: #f0f0f2;
+        color: #6e6e73;
+    }
+    
+    td {
+        border-bottom-color: #e5e5ea;
+    }
+
+    .table-container, .settings-card {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    input[type="text"], select, .input-row.checkbox-wrapper {
+        background: #ffffff !important;
+        color: #1d1d1f !important;
+        border: 1px solid #c7c7cc !important;
+    }
+    
+    input[type="text"]:focus, select:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+
+    .status-box {
+        background: #f5f5f7 !important;
+        border: 1px solid #d2d2d7;
+    }
+
+    /* Buttons Contrast Fix */
+    .btn.primary {
+        background: var(--accent);
+        color: #ffffff; /* White text on blue background! */
+        box-shadow: 0 2px 4px rgba(0, 102, 204, 0.2);
+    }
+    .btn.primary:hover {
+        filter: brightness(1.1);
+        box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
+    }
+
+    .btn.secondary {
+        background: #ffffff;
+        color: #1d1d1f; /* Black text on white background! */
+        border-color: #d2d2d7;
+    }
+    .btn.secondary:hover {
+        background: #f5f5f7;
+    }
+
+    .help-icon {
+        background: #e5e5ea;
+        color: #1d1d1f;
+    }
+    .help-icon:hover {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .delete-btn {
+        background: rgba(255, 59, 48, 0.1);
+        color: #ff3b30;
+        border-color: rgba(255, 59, 48, 0.2);
+    }
+    .delete-btn:hover {
+        background: #ff3b30;
+        color: #ffffff;
+    }
+
+    /* Modals */
+    .modal-overlay {
+        background: rgba(0,0,0,0.2);
+        backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
 }
