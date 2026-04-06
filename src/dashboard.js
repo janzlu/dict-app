@@ -70,7 +70,12 @@ const locales = {
     }
 };
 
-let currentLang = localStorage.getItem('dictapp_lang') || 'en';
+// Auto-detect system language optimally on first run
+let defaultLang = 'en';
+if (navigator.language && navigator.language.toLowerCase().startsWith('zh')) {
+    defaultLang = 'zh';
+}
+let currentLang = localStorage.getItem('dictapp_lang') || defaultLang;
 
 function applyLanguage() {
     const texts = locales[currentLang];
