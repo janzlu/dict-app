@@ -292,7 +292,7 @@ btnForceSync.addEventListener('click', async () => {
         }
 
         syncStatusText.textContent = "Sync Complete";
-        syncStatusText.style.color = "var(--accent)"; Complete
+        syncStatusText.style.color = "var(--accent)";
         setTimeout(loadSyncConfig, 3000);
     } catch (e) {
         syncStatusText.textContent = "Sync Failed: " + e.message;
