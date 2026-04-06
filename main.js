@@ -84,6 +84,12 @@ if (!gotTheLock) {
                 width: 1050,
                 height: 720,
                 autoHideMenuBar: true,
+                titleBarStyle: 'hidden',
+                titleBarOverlay: {
+                    color: '#1a1a1a', // standard sidebar dark gray match
+                    symbolColor: '#ffffff',
+                    height: 32
+                },
                 icon: iconPath,
                 webPreferences: {
                     nodeIntegration: false,
