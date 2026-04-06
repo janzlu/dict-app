@@ -37,6 +37,9 @@ if (!gotTheLock) {
         
         const contextMenu = Menu.buildFromTemplate([
             { label: 'Search Word (Ctrl+Shift+D)', click: () => { inputWindow.show(); inputWindow.focus(); } },
+            { type: 'separator' },
+            { label: '🎲 Shuffle Play Review', click: () => checkReviewQueue() },
+            { type: 'separator' },
             { label: 'Dashboard & Sync', click: () => openDashboard() },
             { type: 'separator' },
             { label: 'Quit Lumina', click: () => { app.isQuitting = true; app.quit(); } }
@@ -178,6 +181,9 @@ if (!gotTheLock) {
                 // Update Context Menu
                 const contextMenu = Menu.buildFromTemplate([
                     { label: `Search Word (${accelerator})`, click: () => { inputWindow.show(); inputWindow.focus(); } },
+                    { type: 'separator' },
+                    { label: '🎲 Shuffle Play Review', click: () => checkReviewQueue() },
+                    { type: 'separator' },
                     { label: 'Dashboard & Sync', click: () => openDashboard() },
                     { type: 'separator' },
                     { label: 'Quit Lumina', click: () => { app.isQuitting = true; app.quit(); } }
@@ -497,7 +503,13 @@ if (!gotTheLock) {
             }
         });
 
+        ipcMain.on('start-shuffle-play', () => {
+            console.log("Starting Shuffle Play...");
+            checkReviewQueue();
+        });
+
         // Background Timer for Reviews (check every 30 seconds)
+        // [AUDIT V1.7.0]: Replaced intrusive 30s timer with manual Shuffle Play logic
         function checkReviewQueue() {
             // Find words due for review (or highly requested, limit 1)
             const stmt = db.prepare(`
@@ -517,10 +529,9 @@ if (!gotTheLock) {
                 flashcardWindow.webContents.send('review-word', word);
             } else {
                 flashcardWindow.hide();
+                // We could optionally send a Toast here saying "You've finished all reviews!"
             }
         }
-
-        reviewTimer = setInterval(checkReviewQueue, 30000); // 30 sec
 
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) {

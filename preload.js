@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld('api', {
     setAutoStart: (enabled) => ipcRenderer.invoke('set-autostart', enabled),
     getAutoPopup: () => ipcRenderer.invoke('get-autopopup'),
     setAutoPopup: (enabled) => ipcRenderer.invoke('set-autopopup', enabled),
+    getTheme: () => ipcRenderer.invoke('get-theme'),
+    setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
+    startShufflePlay: () => ipcRenderer.send('start-shuffle-play'),
     
     // Auto-clipboard
     onClipboardData: (callback) => ipcRenderer.on('clipboard-data', (e, text) => callback(text))

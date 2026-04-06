@@ -36,6 +36,7 @@ const locales = {
         btn_force_sync: "Force Sync Now",
         label_language: "Interface Language",
         btn_del: "Del",
+        btn_shuffle: "🎲 Shuffle Play",
         label_theme: "Interface Theme",
         theme_dark: "Dark Mode (Default)",
         theme_light: "Light Mode",
@@ -67,6 +68,7 @@ const locales = {
         btn_force_sync: "手动执行硬同步校验",
         label_language: "客户端界面展现语言",
         btn_del: "删除条目",
+        btn_shuffle: "🎲 碎片时间随机复习",
         label_theme: "客户端 UI 主题色彩",
         theme_dark: "深色幽能模式 (默认)",
         theme_light: "高亮柔和模式",
@@ -112,6 +114,15 @@ if (languageSelect) {
 // Navigation
 const shortcutInput = document.getElementById('shortcutInput');
 const btnSaveShortcut = document.getElementById('btnSaveShortcut');
+const btnShufflePlay = document.getElementById('btnShufflePlay');
+
+if (btnShufflePlay) {
+    btnShufflePlay.addEventListener('click', () => {
+        if (window.api.startShufflePlay) {
+            window.api.startShufflePlay();
+        }
+    });
+}
 
 navWords.addEventListener('click', () => {
     navWords.classList.add('active');

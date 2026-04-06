@@ -21,8 +21,9 @@
         <div id="viewWords" class="view active">
             <header>
                 <h1 data-i18n="title_wordbook">Wordbook Asset</h1>
-                <div class="stats">
-                    Total: <span id="totalWords">0</span> | Mastered: <span id="masteredWords">0</span>
+                <div class="stats" style="display: flex; align-items: center; gap: 16px;">
+                    <span>Total: <span id="totalWords">0</span> | Mastered: <span id="masteredWords">0</span></span>
+                    <button id="btnShufflePlay" class="btn primary" style="padding: 6px 12px; font-size: 12px; background: linear-gradient(135deg, var(--accent), #a020f0); color: #fff; cursor: pointer;" data-i18n="btn_shuffle">🎲 Shuffle Play</button>
                 </div>
             </header>
             
