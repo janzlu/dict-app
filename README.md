@@ -1,5 +1,4 @@
-# 🌌 识光 Lumina (原 DictApp)
-
+# 🌌 识光 Lumina
 ![Version](https://img.shields.io/badge/version-v1.7.0-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-Desktop-47848f)
 ![Platform](https://img.shields.io/badge/platform-Win%20%7C%20Mac-lightgrey)
