@@ -8,6 +8,7 @@
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "dist": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
+    "release": "electron-builder --win -p always",
     "test": "jest",
     "test:e2e": "playwright test"
   },
@@ -21,7 +22,7 @@
       {
         "provider": "github",
         "owner": "janzlu",
-        "repo": "my-dictionary"
+        "repo": "dict-app"
       }
     ],
     "win": {
