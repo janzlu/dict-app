@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('api', {
     
     // Phase 4: Dashboard & Sync
     getAllWords: () => ipcRenderer.invoke('get-all-words'),
+    getAnalytics: () => ipcRenderer.invoke('get-analytics'),
     getSyncConfig: () => ipcRenderer.invoke('get-sync-config'),
     selectSyncFolder: () => ipcRenderer.invoke('select-sync-folder'),
     setSyncFolder: (path) => ipcRenderer.invoke('set-sync-folder', path),

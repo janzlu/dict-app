@@ -16,6 +16,7 @@ function initDb(app) {
     // WAL mode allows concurrent readers and writers, heavily reducing SQLite locking issues
     const db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
 
     // Create schema
     db.exec(`
@@ -40,6 +41,16 @@ function initDb(app) {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             category_id INTEGER,
             FOREIGN KEY(category_id) REFERENCES categories(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS review_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word_id INTEGER,
+            score INTEGER,
+            mastery_before INTEGER,
+            mastery_after INTEGER,
+            review_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(word_id) REFERENCES words(id) ON DELETE CASCADE
         );
     `);
 

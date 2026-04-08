@@ -8,7 +8,7 @@ const syncEngine = require('./utils/sync');
 // --- Single Instance Lock ---
 const gotTheLock = app.requestSingleInstanceLock();
 
-if (!gotTheLock) {
+if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
     console.log("Another instance is already running. Quitting.");
     app.quit();
 } else {
@@ -120,8 +120,8 @@ if (!gotTheLock) {
 
         // 5. Create the Flashcard Window
         flashcardWindow = new BrowserWindow({
-            width: 300,
-            height: 160,
+            width: 340,
+            height: 180,
             frame: false,
             transparent: true,
             resizable: false,
@@ -144,7 +144,7 @@ if (!gotTheLock) {
         if (initialConfig.flashcardX !== undefined && initialConfig.flashcardY !== undefined) {
              flashcardWindow.setPosition(initialConfig.flashcardX, initialConfig.flashcardY);
         } else {
-             flashcardWindow.setPosition(width - 320, height - 180);
+             flashcardWindow.setPosition(width - 360, height - 200);
         }
         
         // Track position to save it
@@ -258,26 +258,86 @@ if (!gotTheLock) {
             
             try {
                 if (!isPhrase) {
-                    const res = await fetch(`https://dict.youdao.com/suggest?num=1&ver=3.0&doctype=json&cache=false&le=en&q=${encodeURIComponent(wordText)}`);
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.data && json.data.entries && json.data.entries.length > 0) {
-                            const entry = json.data.entries[0];
-                            return {
-                                source: 'online',
-                                data: {
-                                    word: entry.entry,
-                                    phonetic: '',
-                                    translation: entry.explain
+                    try {
+                        const controller = new AbortController();
+                        const id = setTimeout(() => controller.abort(), 6000);
+                        const res = await fetch(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(wordText)}`, { signal: controller.signal });
+                        clearTimeout(id);
+                        
+                        if (res.ok) {
+                            const json = await res.json();
+                            let translation = '';
+                            let phonetic = '';
+                            
+                            let ukphone = '';
+                            let usphone = '';
+                            if (json.ec && json.ec.word && json.ec.word[0]) {
+                                const wordObj = json.ec.word[0];
+                                ukphone = wordObj.ukphone || '';
+                                usphone = wordObj.usphone || '';
+                                phonetic = usphone || ukphone || '';
+                                if (wordObj.trs && wordObj.trs.length > 0) {
+                                    translation = wordObj.trs.map(t => {
+                                        const i = t.tr?.[0]?.l?.i;
+                                        return Array.isArray(i) ? i.join('\n') : (i || '');
+                                    }).filter(Boolean).join('\n');
                                 }
-                            };
+                            } else if (json.ce && json.ce.word && json.ce.word[0]) {
+                                const wordObj = json.ce.word[0];
+                                phonetic = wordObj.phone || '';
+                                if (wordObj.trs && wordObj.trs.length > 0) {
+                                    translation = wordObj.trs.map(t => {
+                                        const i = t.tr?.[0]?.l?.i;
+                                        return Array.isArray(i) ? i.join('\n') : (i || '');
+                                    }).filter(Boolean).join('\n');
+                                }
+                            }
+                            
+                            if (!translation && json.web_trans && json.web_trans['web-translation']) {
+                                const webTrans = json.web_trans['web-translation'][0]?.trans;
+                                if (webTrans) translation = webTrans.map(t => t.value).join(', ');
+                            }
+
+                            if (!translation) {
+                                const sugController = new AbortController();
+                                const sugId = setTimeout(() => sugController.abort(), 5000);
+                                const sugRes = await fetch(`https://dict.youdao.com/suggest?num=1&ver=3.0&doctype=json&cache=false&le=en&q=${encodeURIComponent(wordText)}`, { signal: sugController.signal });
+                                clearTimeout(sugId);
+                                
+                                if (sugRes.ok) {
+                                    const sugJson = await sugRes.json();
+                                    if (sugJson && sugJson.data && sugJson.data.entries && sugJson.data.entries.length > 0) {
+                                        translation = sugJson.data.entries[0].explain;
+                                    }
+                                }
+                            }
+
+                            if (translation) {
+                                return {
+                                    source: 'online',
+                                    data: {
+                                        word: wordText,
+                                        phonetic: phonetic,
+                                        ukphone: ukphone,
+                                        usphone: usphone,
+                                        translation: translation
+                                    }
+                                };
+                            }
                         }
+                    } catch (dictErr) {
+                        console.error("Youdao dict API failed:", dictErr);
+                        // Fall-through to translation APIs
                     }
                 }
                 
                 // Final Fallback: Machine Translation for Phrases / Sentences
                 try {
-                    const gtRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(wordText)}`);
+                    const gtController = new AbortController();
+                    const gtId = setTimeout(() => gtController.abort(), 6000);
+                    const gtRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(wordText)}`, { signal: gtController.signal });
+                    clearTimeout(gtId);
+                    
                     if (gtRes.ok) {
                         const gtJson = await gtRes.json();
                         if (gtJson && gtJson[0] && gtJson[0].length > 0) {
@@ -300,7 +360,11 @@ if (!gotTheLock) {
                     console.error("Google Translate failed, falling back to MyMemory API", gtErr);
                     // Network Degradation Fallback (Mainland China robust)
                     try {
-                        const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(wordText)}&langpair=en|zh-CN`);
+                        const mmController = new AbortController();
+                        const mmId = setTimeout(() => mmController.abort(), 8000);
+                        const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(wordText)}&langpair=en|zh-CN`, { signal: mmController.signal });
+                        clearTimeout(mmId);
+                        
                         if (mmRes.ok) {
                             const mmJson = await mmRes.json();
                             if (mmJson && mmJson.responseData && mmJson.responseData.translatedText) {
@@ -319,7 +383,7 @@ if (!gotTheLock) {
                     }
                 }
             } catch (err) {
-                console.error("Online lookup failed", err);
+                console.error("Online lookup failed completely", err);
             }
 
             return { error: 'Not found in any database' };
@@ -388,8 +452,20 @@ if (!gotTheLock) {
 
         ipcMain.on('submit-review', (event, id, currentMastery, score) => {
             const sm2 = calculateNextReview(currentMastery, score);
-            const stmt = db.prepare('UPDATE words SET mastery_level = ?, next_review_time = ?, review_count = review_count + 1 WHERE id = ?');
-            stmt.run(sm2.masteryLevel, sm2.nextReviewTime, id);
+            
+            const submitTransaction = db.transaction((wordId, newMastery, newTime, oldMastery, userScore) => {
+                const updateStmt = db.prepare('UPDATE words SET mastery_level = ?, next_review_time = ?, review_count = review_count + 1 WHERE id = ?');
+                updateStmt.run(newMastery, newTime, wordId);
+                
+                const logStmt = db.prepare('INSERT INTO review_logs (word_id, score, mastery_before, mastery_after) VALUES (?, ?, ?, ?)');
+                logStmt.run(wordId, userScore, oldMastery, newMastery);
+            });
+            
+            try {
+                submitTransaction(id, sm2.masteryLevel, sm2.nextReviewTime, currentMastery, score);
+            } catch (err) {
+                console.error("Failed to execute review transaction:", err);
+            }
             
             // Sync triggers blindly out on review update
             try { 
@@ -405,6 +481,37 @@ if (!gotTheLock) {
         ipcMain.handle('get-all-words', () => {
             const stmt = db.prepare('SELECT * FROM words ORDER BY mastery_level DESC, created_at DESC');
             return stmt.all();
+        });
+
+        // Analytics Endpoint
+        ipcMain.handle('get-analytics', () => {
+            const data = {};
+            try {
+                // Mastery Distribution
+                data.distribution = db.prepare('SELECT mastery_level as level, COUNT(*) as count FROM words GROUP BY mastery_level').all();
+                
+                // Forecast (Next 7 Days Workload)
+                data.forecast = db.prepare(`
+                    SELECT date(next_review_time) as reviewDate, COUNT(*) as count 
+                    FROM words 
+                    WHERE next_review_time > datetime('now', 'localtime')
+                    GROUP BY reviewDate
+                    ORDER BY reviewDate ASC
+                    LIMIT 7
+                `).all();
+
+                // Heatmap Logs
+                data.heatmap = db.prepare(`
+                    SELECT date(review_time) as reviewDate, COUNT(*) as count
+                    FROM review_logs
+                    GROUP BY reviewDate
+                    ORDER BY reviewDate DESC
+                    LIMIT 365
+                `).all();
+            } catch (err) {
+                console.error("Analytics fetch error:", err);
+            }
+            return data;
         });
 
         ipcMain.handle('get-sync-config', () => {

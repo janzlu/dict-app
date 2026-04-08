@@ -151,6 +151,22 @@ header {
 h1 { margin: 0; font-size: 28px; font-weight: 600; }
 .stats { color: var(--text-secondary); font-size: 14px; }
 
+/* Cockpit */
+.cockpit-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+.cockpit-card h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
 /* Table */
 .table-container {
     background: var(--bg-card);

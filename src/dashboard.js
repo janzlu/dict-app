@@ -156,12 +156,18 @@ async function loadWords() {
         allWordsData = await window.api.getAllWords();
 
         let masteredCtx = 0;
+        let totalMastery = 0;
         allWordsData.forEach(w => {
             if (w.mastery_level === 5) masteredCtx++;
+            totalMastery += w.mastery_level;
         });
 
         totalWordsLabel.textContent = allWordsData.length;
         masteredWordsLabel.textContent = masteredCtx;
+        
+        const rRate = allWordsData.length > 0 ? ((totalMastery / (allWordsData.length * 5)) * 100).toFixed(1) : 0;
+        const rateSpan = document.getElementById('retentionRate');
+        if (rateSpan) rateSpan.textContent = rRate + '%';
 
         const maxPage = Math.ceil(allWordsData.length / ITEMS_PER_PAGE) || 1;
         if (currentPage > maxPage) currentPage = maxPage;
@@ -209,6 +215,7 @@ function renderTablePage() {
             if (confirm("Are you sure you want to delete this word?")) {
                 await window.api.deleteWord(id);
                 loadWords();
+                loadAnalytics();
             }
         });
     });
@@ -421,7 +428,164 @@ if (syncHelpModal) {
     });
 }
 
+let chartDist = null;
+let chartFore = null;
+let chartHeat = null;
+let _isResizeRegistered = false;
+
+async function loadAnalytics() {
+    if (!window.echarts) return;
+    
+    if (!_isResizeRegistered) {
+        window.addEventListener('resize', () => {
+            if(chartDist) chartDist.resize();
+            if(chartFore) chartFore.resize();
+            if(chartHeat) chartHeat.resize();
+        });
+        _isResizeRegistered = true;
+    }
+
+    if (!chartDist) {
+        chartDist = echarts.init(document.getElementById('chartDistribution'), 'dark');
+        chartDist.getDom().style.backgroundColor = 'transparent';
+    }
+    if (!chartFore) {
+        chartFore = echarts.init(document.getElementById('chartForecast'), 'dark');
+        chartFore.getDom().style.backgroundColor = 'transparent';
+    }
+    if (!chartHeat) {
+        chartHeat = echarts.init(document.getElementById('chartHeatmap'), 'dark');
+        chartHeat.getDom().style.backgroundColor = 'transparent';
+    }
+
+    try {
+        const data = await window.api.getAnalytics();
+        
+        const distMap = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0};
+        if(data.distribution) {
+            data.distribution.forEach(d => distMap[d.level] = d.count);
+        }
+
+        chartDist.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'item', padding: 12, backgroundColor: 'rgba(20,20,20,0.9)', borderColor: '#333' },
+            series: [{
+                name: '熟练层级',
+                type: 'pie',
+                radius: ['20%', '80%'],
+                center: ['50%', '50%'],
+                roseType: 'area',
+                itemStyle: { borderRadius: 6, borderColor: '#111', borderWidth: 2 },
+                data: [
+                    { value: distMap[0] + distMap[1], name: '初识边界', itemStyle: {color: '#4a4a50'} },
+                    { value: distMap[2] + distMap[3], name: '潜意识区', itemStyle: {color: '#9a30ff'} },
+                    { value: distMap[4] + distMap[5], name: '本能反应', itemStyle: {color: '#00d2ff'} }
+                ]
+            }]
+        });
+
+        const xAxis = [];
+        const yAxis = [];
+        if(data.forecast && data.forecast.length > 0) {
+            data.forecast.forEach(f => {
+                xAxis.push(f.reviewDate ? f.reviewDate.substring(5) : 'Unknown'); // 'MM-DD'
+                yAxis.push(f.count);
+            });
+        }
+        
+        chartFore.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', data: xAxis.length ? xAxis : ['无需复习'], axisLine: { lineStyle: { color: '#666' } } },
+            yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#222' } } },
+            series: [{
+                name: '待复习词汇量',
+                type: 'bar',
+                barWidth: '40%',
+                data: yAxis.length ? yAxis : [0],
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: '#00d2ff' },
+                        { offset: 1, color: '#3a7bd5' }
+                    ]),
+                    borderRadius: [4, 4, 0, 0]
+                }
+            }]
+        });
+
+        // 3. 365-Day Heatmap
+        let maxReviews = 1;
+        const heatData = [];
+        if(data.heatmap && data.heatmap.length > 0) {
+            data.heatmap.forEach(h => {
+                heatData.push([h.reviewDate, h.count]);
+                if (h.count > maxReviews) maxReviews = h.count;
+            });
+        }
+        
+        // Define rolling 12 months range
+        const today = new Date();
+        const endStr = today.toISOString().split('T')[0];
+        const start = new Date();
+        start.setFullYear(start.getFullYear() - 1);
+        const startStr = start.toISOString().split('T')[0];
+
+        chartHeat.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { 
+                position: 'top',
+                formatter: function (p) {
+                    const format = echarts.format.formatTime('yyyy-MM-dd', p.data[0]);
+                    return format + ': ' + p.data[1] + ' 个复习切片';
+                }
+            },
+            visualMap: {
+                min: 0,
+                max: Math.max(maxReviews, 10),
+                calculable: true,
+                orient: 'horizontal',
+                left: 'right',
+                top: 0,
+                itemWidth: 12,
+                itemHeight: 120, // Length of the gradient bar
+                inRange: {
+                    color: ['#1f2026', '#314c81', '#00d2ff', '#00ffaa']
+                },
+                textStyle: { color: '#888', fontSize: 12 }
+            },
+            calendar: [{
+                range: [startStr, endStr],
+                cellSize: ['auto', 20], // Increase base height to prevent vertical squash
+                right: 30,
+                left: 60,
+                top: 65, // Push calendar down to clear visualMap
+                bottom: 10,
+                splitLine: { show: false },
+                itemStyle: {
+                    color: '#16171d', // Slightly brighter base for empty days
+                    borderWidth: 2, // Thinner border to reveal more colored block area
+                    borderColor: 'var(--bg-card)'
+                },
+                yearLabel: { show: false },
+                dayLabel: { color: '#888', firstDay: 1, nameMap: 'ZH', fontSize: 11, margin: 12 },
+                monthLabel: { color: '#888', nameMap: 'ZH', fontSize: 12 }
+            }],
+            series: [{
+                type: 'heatmap',
+                coordinateSystem: 'calendar',
+                calendarIndex: 0,
+                data: heatData
+            }]
+        });
+
+    } catch(err) {
+        console.error("Dashboard Analytics Error:", err);
+    }
+}
+
 // Init
 applyLanguage();
 loadWords();
+loadAnalytics();
 loadSyncConfig();

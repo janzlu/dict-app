@@ -66,10 +66,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Click phonetic to hear again
-wordPhonetic.addEventListener('click', () => {
-    if (currentWord) playTTS(currentWord);
-});
+// Removed global click listener to use specific phonetic audio hooks
 
 async function performSearch(word) {
     try {
@@ -83,14 +80,23 @@ async function performSearch(word) {
         const data = response.data;
         currentWord = data.word; // store for TTS
 
-        // ECDICT fallback structure might differ slightly, handle gracefully
-        const phonetic = data.phonetic ? `/${data.phonetic}/` : '';
         const definition = data.translation || data.definition || 'No definition available.';
         
-        currentPhonetic = data.phonetic || '';
+        let combined = data.phonetic || '';
+        if (data.ukphone && data.usphone && data.ukphone !== data.usphone) {
+            combined = `UK /${data.ukphone}/ US /${data.usphone}/`;
+        } else if (data.ukphone) {
+            combined = `UK /${data.ukphone}/`;
+        } else if (data.usphone) {
+            combined = `US /${data.usphone}/`;
+        } else if (combined && !combined.includes('/')) {
+            combined = `/${combined}/`;
+        }
+
+        currentPhonetic = combined;
         currentTranslation = definition;
         
-        showResult(data.word, phonetic, definition);
+        showResult(data, definition, response.source);
         // auto-TTS removed to prevent disturbance
         // playTTS(data.word); 
 
@@ -102,12 +108,35 @@ async function performSearch(word) {
     }
 }
 
-function showResult(title, phonetic, definition) {
+window.playAudio = function(event, word, type) {
+    if (event) event.stopPropagation();
+    const url = type ? `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=${type}` : `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}`;
+    const audio = new Audio(url);
+    audio.play().catch(err => {
+        console.error("Audio playback error:", err);
+        playTTS(word);
+    });
+};
+
+function showResult(data, definition, source = 'unknown') {
+    const wordText = typeof data === 'string' ? data : data.word;
+    const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+
     // Format speaker icon
-    if (phonetic) {
-        wordPhonetic.innerHTML = `🔊 <span>${phonetic}</span>`;
+    if (typeof data !== 'string' && (data.ukphone || data.usphone)) {
+        let html = '';
+        if (data.ukphone) {
+            html += `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}', 1)" title="UK Pronunciation">${speakerSVG}UK /${data.ukphone}/</span>`;
+        }
+        if (data.usphone) {
+            if (html !== '') html += '&nbsp;&nbsp;';
+            html += `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}', 2)" title="US Pronunciation">${speakerSVG}US /${data.usphone}/</span>`;
+        }
+        wordPhonetic.innerHTML = html;
+    } else if (typeof data !== 'string' && data.phonetic) {
+        wordPhonetic.innerHTML = `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}')">${speakerSVG}/${data.phonetic}/</span>`;
     } else {
-        wordPhonetic.innerHTML = `🔊 <span style="font-size: 12px; opacity: 0.6">Click to speak</span>`;
+        wordPhonetic.innerHTML = `<span class="phonetic-btn" onclick="playTTS('${wordText.replace(/'/g, "\\'")}')" style="font-size: 12px; opacity: 0.6">${speakerSVG}Click to speak</span>`;
     }
     wordPhonetic.style.display = 'inline-block';
     
@@ -119,6 +148,9 @@ function showResult(title, phonetic, definition) {
         .map(s => `<div style="margin-bottom: 8px;">• ${s}</div>`)
         .join('');
         
+    // Add telemetry badge
+    formattedText += `<div style="font-size: 10px; opacity: 0.25; margin-top: 8px; font-family: monospace; text-align: right; user-select: none;">[src: ${source}]</div>`;
+
     wordDefinition.innerHTML = formattedText || definition;
     
     // Since we resize the transparent bounds in main.js, this will gracefully expand
