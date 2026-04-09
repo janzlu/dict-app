@@ -4,6 +4,7 @@ const Database = require('better-sqlite3');
 const { initDb } = require('./utils/db');
 const { calculateNextReview } = require('./utils/sm2');
 const syncEngine = require('./utils/sync');
+const { autoUpdater } = require('electron-updater');
 
 // --- Single Instance Lock ---
 const gotTheLock = app.requestSingleInstanceLock();
@@ -604,6 +605,107 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             updateTitleBar(); // Update instantly
             return themeMode;
         });
+
+        // --- Updater IPCs ---
+        autoUpdater.autoDownload = false;
+        autoUpdater.autoInstallOnAppQuit = false; // We want manual control or explicit
+
+        ipcMain.handle('check-update', async () => {
+            try {
+                if (!app.isPackaged) return { success: false, error: 'Updater not available in development mode' };
+                const result = await autoUpdater.checkForUpdates();
+                return { success: true, updateInfo: result.updateInfo };
+            } catch (err) {
+                console.error("Update check failed:", err);
+                return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.handle('download-update', async () => {
+            try {
+                await autoUpdater.downloadUpdate();
+                return { success: true };
+            } catch (err) {
+                return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.handle('install-update', () => {
+            autoUpdater.quitAndInstall();
+        });
+
+        ipcMain.handle('get-version', () => {
+            return app.getVersion();
+        });
+
+        let hasNotifiedUpdate = false;
+        let pendingUpdateInfo = null;
+        
+        const notifyDashboardUpdate = (msg) => {
+            if (msg.type === 'update-available') {
+                pendingUpdateInfo = msg.info;
+            }
+
+            if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+                dashboardWindow.webContents.send('update-message', msg);
+            }
+            // If it's a new update available, throw a system notification as a reminder
+            if (msg.type === 'update-available' && !hasNotifiedUpdate) {
+                hasNotifiedUpdate = true;
+                const { Notification } = require('electron');
+                if (Notification.isSupported()) {
+                    const isZh = app.getLocale().toLowerCase().startsWith('zh');
+                    const notification = new Notification({
+                        title: isZh ? '识光 - 发现新版本' : 'Lumina Update Available',
+                        body: isZh 
+                            ? `更新版本 ${msg.info.version} 已推送！点击此处立即下载并更新。` 
+                            : `Version ${msg.info.version} is out! Click here to download and apply.`,
+                        icon: iconPath,
+                        timeoutType: 'never'
+                    });
+                    notification.on('click', () => {
+                        openDashboard();
+                        // Wait a brief moment to ensure window is ready/focused and UI is loaded
+                        setTimeout(() => {
+                           if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+                               // Restore update UI state in case it was a cold start
+                               dashboardWindow.webContents.send('update-message', { type: 'update-available', info: pendingUpdateInfo });
+                               // Trigger the download automatically
+                               dashboardWindow.webContents.send('update-message', { type: 'trigger-download' });
+                           }
+                        }, 500); 
+                    });
+                    notification.show();
+                }
+            }
+        };
+
+        autoUpdater.on('update-available', (info) => notifyDashboardUpdate({ type: 'update-available', info }));
+        autoUpdater.on('update-not-available', (info) => notifyDashboardUpdate({ type: 'update-not-available', info }));
+        autoUpdater.on('download-progress', (progressObj) => notifyDashboardUpdate({ type: 'download-progress', progress: progressObj }));
+        autoUpdater.on('update-downloaded', (info) => notifyDashboardUpdate({ type: 'update-downloaded', info }));
+        autoUpdater.on('error', (err) => notifyDashboardUpdate({ type: 'error', error: err.message }));
+
+        ipcMain.handle('get-autoupdate', () => {
+            const cfg = syncEngine.getConfig(app) || {};
+            return cfg.autoUpdateEnabled !== false;
+        });
+
+        ipcMain.handle('set-autoupdate', (event, enable) => {
+            const currentCfg = syncEngine.getConfig(app) || {};
+            currentCfg.autoUpdateEnabled = enable;
+            syncEngine.setConfig(app, currentCfg);
+            return enable;
+        });
+
+        // Initial silent check
+        setTimeout(() => {
+            const cfg = syncEngine.getConfig(app) || {};
+            if (cfg.autoUpdateEnabled !== false && app.isPackaged) {
+                autoUpdater.checkForUpdates().catch(()=>{});
+            }
+        }, 8000);
+        // --- Updater IPCs ---
 
         // Delete word from DB
         ipcMain.handle('delete-word', (event, id) => {

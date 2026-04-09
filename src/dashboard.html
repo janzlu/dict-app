@@ -14,6 +14,7 @@
             <a href="#" class="active" id="navWords" data-i18n="nav_wordbook">Wordbook</a>
             <a href="#" id="navSettings" data-i18n="nav_settings">Settings & Sync</a>
         </nav>
+        <div class="app-version" id="appVersionDisplay" style="position: absolute; bottom: 30px; left: 24px; font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 500; font-family: monospace;"></div>
     </div>
     
     <div class="main-content">
@@ -123,6 +124,8 @@
                     </div>
                 </div>
 
+                <!-- Update UI Moved to bottom -->
+
                 <div class="form-group" style="margin-bottom: 30px;">
                     <label data-i18n="label_shortcut">Spotlight Global Shortcut</label>
                     <div class="input-row">
@@ -149,6 +152,31 @@
 
                 <div class="actions">
                     <button id="btnForceSync" class="btn secondary" data-i18n="btn_force_sync">Force Sync Now</button>
+                </div>
+                
+                <hr style="border: 0; height: 1px; background: rgba(255,255,255,0.08); margin: 40px 0;">
+
+                <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_autoupdate">Auto Update</label>
+                    <div class="input-row checkbox-wrapper">
+                        <input type="checkbox" id="autoUpdateCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;" checked>
+                        <span style="font-size: 14px; color: var(--text-secondary); cursor: pointer;" data-i18n="desc_autoupdate" onclick="document.getElementById('autoUpdateCheckbox').click()">Automatically check for updates and notify when available</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label data-i18n="label_check_update">Version Update</label>
+                    <div class="input-row">
+                        <button id="btnCheckUpdate" class="btn secondary" data-i18n="btn_check_update">Check for Updates</button>
+                    </div>
+                    <div id="updateStatusContainer" style="display:none; margin-top:10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                        <div id="updateStatusText" style="font-size: 13px; margin-bottom: 8px;"></div>
+                        <div id="updateProgressBar" style="display:none; width:100%; background:rgba(255,255,255,0.1); height:4px; border-radius:2px; overflow:hidden;">
+                            <div id="updateProgressFill" style="width:0%; height:100%; background:var(--accent); transition:width 0.2s;"></div>
+                        </div>
+                        <button id="btnDownloadUpdate" class="btn primary" style="display:none; margin-top:10px; padding: 6px 12px; font-size:12px;" data-i18n="btn_download_update">Download Update</button>
+                        <button id="btnInstallUpdate" class="btn primary" style="display:none; margin-top:10px; padding: 6px 12px; font-size:12px;" data-i18n="btn_install_update">Install & Relaunch</button>
+                    </div>
                 </div>
             </div>
         </div>

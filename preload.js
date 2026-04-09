@@ -32,6 +32,15 @@ contextBridge.exposeInMainWorld('api', {
     startAutoSlideshow: () => ipcRenderer.send('start-auto-slideshow'),
     slideshowNext: () => ipcRenderer.send('slideshow-next'),
     
+    // Auto Updater
+    checkUpdate: () => ipcRenderer.invoke('check-update'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    installUpdate: () => ipcRenderer.invoke('install-update'),
+    onUpdateMessage: (callback) => ipcRenderer.on('update-message', (e, msg) => callback(msg)),
+    getAutoUpdate: () => ipcRenderer.invoke('get-autoupdate'),
+    setAutoUpdate: (enabled) => ipcRenderer.invoke('set-autoupdate', enabled),
+    getVersion: () => ipcRenderer.invoke('get-version'),
+    
     // Auto-clipboard
     onClipboardData: (callback) => ipcRenderer.on('clipboard-data', (e, text) => callback(text))
 });

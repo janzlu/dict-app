@@ -44,6 +44,12 @@ const locales = {
         theme_system: "Follow OS System",
         label_autostart: "Start on Boot",
         desc_autostart: "Launch Lumina silently in the tray when you sign in",
+        label_autoupdate: "Auto Update",
+        desc_autoupdate: "Automatically check for updates and notify when available",
+        label_check_update: "Version Update",
+        btn_check_update: "Check for Updates",
+        btn_download_update: "Download Update",
+        btn_install_update: "Install & Relaunch",
         label_autopopup: "Clipboard Auto-Pop",
         desc_autopopup: "Automatically show Spotlight when a short English text is copied"
     },
@@ -77,6 +83,12 @@ const locales = {
         theme_system: "跟随操作系统动态变换",
         label_autostart: "开机自动运行",
         desc_autostart: "系统登录时，自动在后台托盘静默启动此软件引擎",
+        label_autoupdate: "静默更新检测",
+        desc_autoupdate: "自动在后台检查客户端新版本",
+        label_check_update: "版本更新",
+        btn_check_update: "手动检查更新",
+        btn_download_update: "高速下载更新包",
+        btn_install_update: "立即安装并重启",
         label_autopopup: "划词复制唤起",
         desc_autopopup: "默认开启。当您按下复制键提取短语文本时，将零延迟触发弹出大面板进行光速查词"
     }
@@ -88,6 +100,14 @@ if (navigator.language && navigator.language.toLowerCase().startsWith('zh')) {
     defaultLang = 'zh';
 }
 let currentLang = localStorage.getItem('dictapp_lang') || defaultLang;
+let appVersionCache = '';
+
+function updateVersionText() {
+    const d = document.getElementById('appVersionDisplay');
+    if (d && appVersionCache) {
+        d.textContent = (currentLang === 'zh' ? '当前版本 v' : 'Current Version v') + appVersionCache;
+    }
+}
 
 function applyLanguage() {
     const texts = locales[currentLang];
@@ -100,6 +120,8 @@ function applyLanguage() {
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.textContent = texts.btn_del;
     });
+    
+    updateVersionText();
 }
 
 const languageSelect = document.getElementById('languageSelect');
@@ -291,6 +313,12 @@ async function loadSyncConfig() {
         document.getElementById('autoReviewCheckbox').checked = isAutoReview;
     }
 
+    if (window.api.getAutoUpdate) {
+        const isAutoUpdate = await window.api.getAutoUpdate();
+        const autoUpdateCheckbox = document.getElementById('autoUpdateCheckbox');
+        if (autoUpdateCheckbox) autoUpdateCheckbox.checked = isAutoUpdate;
+    }
+
     if (window.api.getTheme) {
         const theme = await window.api.getTheme();
         const themeSelect = document.getElementById('themeSelect');
@@ -315,6 +343,112 @@ document.getElementById('autoReviewCheckbox').addEventListener('change', async (
         await window.api.setAutoReview(e.target.checked);
     }
 });
+
+const autoUpdateCheckbox = document.getElementById('autoUpdateCheckbox');
+if (autoUpdateCheckbox) {
+    autoUpdateCheckbox.addEventListener('change', async (e) => {
+        if (window.api.setAutoUpdate) {
+            await window.api.setAutoUpdate(e.target.checked);
+        }
+    });
+}
+
+// Updater UI Logic
+const btnCheckUpdate = document.getElementById('btnCheckUpdate');
+const updateStatusContainer = document.getElementById('updateStatusContainer');
+const updateStatusText = document.getElementById('updateStatusText');
+const updateProgressBar = document.getElementById('updateProgressBar');
+const updateProgressFill = document.getElementById('updateProgressFill');
+const btnDownloadUpdate = document.getElementById('btnDownloadUpdate');
+const btnInstallUpdate = document.getElementById('btnInstallUpdate');
+
+if (btnCheckUpdate) {
+    btnCheckUpdate.addEventListener('click', async () => {
+        if (!window.api.checkUpdate) return;
+        updateStatusContainer.style.display = 'block';
+        updateStatusText.textContent = currentLang === 'en' ? 'Checking for updates...' : '正在检查更新...';
+        updateStatusText.style.color = 'var(--text-secondary)';
+        btnDownloadUpdate.style.display = 'none';
+        btnInstallUpdate.style.display = 'none';
+        updateProgressBar.style.display = 'none';
+
+        const res = await window.api.checkUpdate();
+        if (!res.success) {
+            updateStatusText.textContent = (currentLang === 'en' ? 'Check failed: ' : '检查失败: ') + res.error;
+            updateStatusText.style.color = '#ff5555';
+        }
+    });
+}
+
+if (btnDownloadUpdate) {
+    btnDownloadUpdate.addEventListener('click', async () => {
+        if (!window.api.downloadUpdate) return;
+        btnDownloadUpdate.style.display = 'none';
+        updateProgressBar.style.display = 'block';
+        updateProgressFill.style.width = '0%';
+        updateStatusText.textContent = currentLang === 'en' ? 'Downloading update...' : '正在下载更新...';
+        updateStatusText.style.color = 'var(--accent)';
+        
+        await window.api.downloadUpdate();
+    });
+}
+
+if (btnInstallUpdate) {
+    btnInstallUpdate.addEventListener('click', () => {
+        if (window.api.installUpdate) window.api.installUpdate();
+    });
+}
+
+if (window.api.onUpdateMessage) {
+    window.api.onUpdateMessage((msg) => {
+        if (!updateStatusContainer) return;
+        updateStatusContainer.style.display = 'block';
+        
+        if (msg.type === 'trigger-download') {
+            // Switch to settings nav if not already active
+            if (typeof navSettings !== 'undefined' && navSettings && !navSettings.classList.contains('active')) {
+                navSettings.click();
+            }
+            if (typeof btnDownloadUpdate !== 'undefined' && btnDownloadUpdate) {
+                btnDownloadUpdate.scrollIntoView({ behavior: 'smooth' });
+                // Automatically trigger the download
+                btnDownloadUpdate.click();
+            }
+        } else if (msg.type === 'update-available') {
+            const ver = msg.info.version;
+            updateStatusText.textContent = currentLang === 'en' ? `New version available! (${ver})` : `发现新版本！ (${ver})`;
+            updateStatusText.style.color = '#00ffaa';
+            btnDownloadUpdate.style.display = 'inline-block';
+            btnInstallUpdate.style.display = 'none';
+            updateProgressBar.style.display = 'none';
+        } else if (msg.type === 'update-not-available') {
+            updateStatusText.textContent = currentLang === 'en' ? 'You are on the latest version.' : '当前已经是最新版本。';
+            updateStatusText.style.color = 'var(--text-secondary)';
+            btnDownloadUpdate.style.display = 'none';
+            btnInstallUpdate.style.display = 'none';
+            updateProgressBar.style.display = 'none';
+        } else if (msg.type === 'download-progress') {
+            updateProgressBar.style.display = 'block';
+            const percent = msg.progress.percent || 0;
+            updateProgressFill.style.width = `${percent}%`;
+            updateStatusText.textContent = currentLang === 'en' 
+                ? `Downloading... ${Math.round(percent)}%` 
+                : `下载中... ${Math.round(percent)}%`;
+        } else if (msg.type === 'update-downloaded') {
+            updateProgressBar.style.display = 'none';
+            updateStatusText.textContent = currentLang === 'en' ? 'Download complete. Ready to install.' : '下载完成。准备好安装。';
+            updateStatusText.style.color = '#00ffaa';
+            btnDownloadUpdate.style.display = 'none';
+            btnInstallUpdate.style.display = 'inline-block';
+        } else if (msg.type === 'error') {
+            updateStatusText.textContent = (currentLang === 'en' ? 'Update Error: ' : '更新错误: ') + msg.error;
+            updateStatusText.style.color = '#ff5555';
+            btnDownloadUpdate.style.display = 'none';
+            btnInstallUpdate.style.display = 'none';
+            updateProgressBar.style.display = 'none';
+        }
+    });
+}
 
 const themeSelect = document.getElementById('themeSelect');
 if (themeSelect) {
@@ -589,3 +723,11 @@ applyLanguage();
 loadWords();
 loadAnalytics();
 loadSyncConfig();
+
+// Load static version
+if (window.api.getVersion) {
+    window.api.getVersion().then(v => {
+        appVersionCache = v;
+        updateVersionText();
+    });
+}
