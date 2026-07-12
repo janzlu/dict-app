@@ -35,11 +35,23 @@
 
 ---
 
+### 🌟 核心突破三：全新全局自动更新横幅与下载进度可视化
+
+- 🚀 **全局自动更新提醒横幅 (Global Auto-Update Banner)**：
+  - 在主显示区的顶端引入了全新的通知横幅，配合高级的滑入动画与玻璃摩砂设计，确保用户在“生词本”等其他常用页面上均能即时获取更新提醒。
+- 📊 **下载进度条与安装一键完成 (Progress Bar & One-Click Relaunch)**：
+  - 替换了原先的纯后台下载或需点击到设置最底部查看进度的旧逻辑。现在，点击“高速下载更新包”后，直接在横幅上直观显示下载进度百分比。下载完成后，自动演进为“立即安装并重启”按钮，操作更加一气呵成。
+- 🇨🇳 **原生中文首屏优化 (Native Chinese UI Defaults)**：
+  - 更新横幅默认全部采用中文静态展示，有效解决冷启动状态下文字中英文闪烁抖动的问题，细节设计诚意满满。
+
+---
+
 ### 📦 变更日志 (Changelog)
 
 1. `utils/preservation.js`：重构为纯前置占位符与 glossary 字典直接映射引擎。
 2. `main.js`：添加系统截图监听、OCR.space 与有道 OCR 解析管道；实现 `queryFreeEngine` 级联免 Key 回退机制和后台异步音标补充。
-3. `src/dashboard.js`：补全 `en` 与 `zh` 语言包下关于 `label_autoreview` 和 `desc_autoreview` 的原生翻译键，支持截图配置加载保存与快捷键状态查询。
-4. `src/dashboard.html` & `src/dashboard.css`：新增截图翻译配置卡片与快捷键状态徽章样式。
+3. `src/dashboard.js`：新增全局更新横幅的事件监听与动态进度刷新支持，补全 `en` 与 `zh` 语言包下关于 `label_autoreview` 和 `desc_autoreview` 的原生翻译键，支持截图配置加载保存与快捷键状态查询。
+4. `src/dashboard.html` & `src/dashboard.css`：新增全局更新通知横幅 HTML 结构与玻璃摩砂动画样式，补全截图翻译配置卡片与快捷键状态徽章样式。
 5. `src/flashcard.js` & `src/flashcard.css`：微调发音喇叭图标跟随在音标后的排版样式；修复卡片收起状态下悬浮圆圈背景不透明（白色方角）的视觉缺陷。
-6. `tests/preservation.test.js` & `tests/e2e/translation.spec.js`：重构以适应全新的占位符映射流和 Playwright 快捷键测试桩。
+6. `tests/preservation.test.js` & `tests/e2e/translation.spec.js`：重构以适应全新的占位符映射流 and Playwright 快捷键测试桩。
+

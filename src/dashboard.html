@@ -18,6 +18,24 @@
     </div>
     
     <div class="main-content">
+        <!-- Global Update Notification Banner -->
+        <div id="globalUpdateBanner" class="update-banner">
+            <div class="update-banner-info">
+                <span class="update-banner-icon">🚀</span>
+                <div class="update-banner-content">
+                    <span id="globalUpdateText" class="update-banner-title" data-i18n="update_available_title">发现新版本！</span>
+                    <div id="globalUpdateProgressContainer" class="update-banner-progress" style="display: none;">
+                        <div id="globalUpdateProgressFill" class="update-banner-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="update-banner-actions">
+                <button id="btnGlobalDownload" class="btn primary" style="padding: 6px 14px; font-size: 12px;" data-i18n="btn_download_update">高速下载更新包</button>
+                <button id="btnGlobalInstall" class="btn primary" style="display: none; padding: 6px 14px; font-size: 12px; background: #00ffaa; color: #000;" data-i18n="btn_install_update">立即安装并重启</button>
+                <button id="btnGlobalClose" class="update-banner-close">✕</button>
+            </div>
+        </div>
+
         <!-- Wordbook View -->
         <div id="viewWords" class="view active">
             <header>

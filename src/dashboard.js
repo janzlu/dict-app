@@ -12,6 +12,14 @@ const syncPathInput = document.getElementById('syncPathInput');
 const syncStatusText = document.getElementById('syncStatusText');
 const btnForceSync = document.getElementById('btnForceSync');
 
+const globalUpdateBanner = document.getElementById('globalUpdateBanner');
+const globalUpdateText = document.getElementById('globalUpdateText');
+const globalUpdateProgressContainer = document.getElementById('globalUpdateProgressContainer');
+const globalUpdateProgressFill = document.getElementById('globalUpdateProgressFill');
+const btnGlobalDownload = document.getElementById('btnGlobalDownload');
+const btnGlobalInstall = document.getElementById('btnGlobalInstall');
+const btnGlobalClose = document.getElementById('btnGlobalClose');
+
 // i18n
 const locales = {
     en: {
@@ -19,6 +27,7 @@ const locales = {
         logo: "Lumina",
         nav_wordbook: "Wordbook",
         nav_settings: "Settings & Sync",
+        update_available_title: "New version available!",
         title_wordbook: "Wordbook Asset",
         th_word: "Word",
         th_translation: "Translation",
@@ -86,6 +95,7 @@ const locales = {
         logo: "识光",
         nav_wordbook: "生词本",
         nav_settings: "设置与同步",
+        update_available_title: "发现新版本！",
         title_wordbook: "生词本总览",
         th_word: "单词",
         th_translation: "自动释义",
@@ -540,53 +550,156 @@ if (btnInstallUpdate) {
     });
 }
 
+// Global Update Banner Event Listeners
+if (btnGlobalDownload) {
+    btnGlobalDownload.addEventListener('click', async () => {
+        if (!window.api.downloadUpdate) return;
+        btnGlobalDownload.style.display = 'none';
+        if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'block';
+        if (globalUpdateProgressFill) globalUpdateProgressFill.style.width = '0%';
+        if (globalUpdateText) {
+            globalUpdateText.textContent = currentLang === 'en' ? 'Downloading update...' : '正在下载更新...';
+        }
+        
+        // Also update the settings-view specific elements if they exist
+        if (btnDownloadUpdate) btnDownloadUpdate.style.display = 'none';
+        if (updateProgressBar) updateProgressBar.style.display = 'block';
+        if (updateProgressFill) updateProgressFill.style.width = '0%';
+        if (updateStatusText) {
+            updateStatusText.textContent = currentLang === 'en' ? 'Downloading update...' : '正在下载更新...';
+            updateStatusText.style.color = 'var(--accent)';
+        }
+
+        await window.api.downloadUpdate();
+    });
+}
+
+if (btnGlobalInstall) {
+    btnGlobalInstall.addEventListener('click', () => {
+        if (window.api.installUpdate) window.api.installUpdate();
+    });
+}
+
+if (btnGlobalClose) {
+    btnGlobalClose.addEventListener('click', () => {
+        if (globalUpdateBanner) globalUpdateBanner.style.display = 'none';
+    });
+}
+
 if (window.api.onUpdateMessage) {
     window.api.onUpdateMessage((msg) => {
-        if (!updateStatusContainer) return;
-        updateStatusContainer.style.display = 'block';
-        
-        if (msg.type === 'trigger-download') {
-            // Switch to settings nav if not already active
-            if (typeof navSettings !== 'undefined' && navSettings && !navSettings.classList.contains('active')) {
-                navSettings.click();
+        let currentVersion = '1.9.0';
+        if (msg.info && msg.info.version) {
+            currentVersion = msg.info.version;
+        }
+
+        // --- Settings view updater elements ---
+        if (updateStatusContainer) {
+            updateStatusContainer.style.display = 'block';
+            
+            if (msg.type === 'trigger-download') {
+                if (typeof navSettings !== 'undefined' && navSettings && !navSettings.classList.contains('active')) {
+                    navSettings.click();
+                }
+                if (typeof btnDownloadUpdate !== 'undefined' && btnDownloadUpdate) {
+                    btnDownloadUpdate.scrollIntoView({ behavior: 'smooth' });
+                    btnDownloadUpdate.click();
+                }
+            } else if (msg.type === 'update-available') {
+                const ver = msg.info.version;
+                updateStatusText.textContent = currentLang === 'en' ? `New version available! (${ver})` : `发现新版本！ (${ver})`;
+                updateStatusText.style.color = '#00ffaa';
+                btnDownloadUpdate.style.display = 'inline-block';
+                btnInstallUpdate.style.display = 'none';
+                updateProgressBar.style.display = 'none';
+            } else if (msg.type === 'update-not-available') {
+                updateStatusText.textContent = currentLang === 'en' ? 'You are on the latest version.' : '当前已经是最新版本。';
+                updateStatusText.style.color = 'var(--text-secondary)';
+                btnDownloadUpdate.style.display = 'none';
+                btnInstallUpdate.style.display = 'none';
+                updateProgressBar.style.display = 'none';
+            } else if (msg.type === 'download-progress') {
+                updateProgressBar.style.display = 'block';
+                const percent = msg.progress.percent || 0;
+                updateProgressFill.style.width = `${percent}%`;
+                updateStatusText.textContent = currentLang === 'en' 
+                    ? `Downloading... ${Math.round(percent)}%` 
+                    : `下载中... ${Math.round(percent)}%`;
+            } else if (msg.type === 'update-downloaded') {
+                updateProgressBar.style.display = 'none';
+                updateStatusText.textContent = currentLang === 'en' ? 'Download complete. Ready to install.' : '下载完成。准备好安装。';
+                updateStatusText.style.color = '#00ffaa';
+                btnDownloadUpdate.style.display = 'none';
+                btnInstallUpdate.style.display = 'inline-block';
+            } else if (msg.type === 'error') {
+                updateStatusText.textContent = (currentLang === 'en' ? 'Update Error: ' : '更新错误: ') + msg.error;
+                updateStatusText.style.color = '#ff5555';
+                btnDownloadUpdate.style.display = 'none';
+                btnInstallUpdate.style.display = 'none';
+                updateProgressBar.style.display = 'none';
             }
-            if (typeof btnDownloadUpdate !== 'undefined' && btnDownloadUpdate) {
-                btnDownloadUpdate.scrollIntoView({ behavior: 'smooth' });
-                // Automatically trigger the download
-                btnDownloadUpdate.click();
+        }
+
+        // --- Global banner updater elements ---
+        if (globalUpdateBanner) {
+            if (msg.type === 'trigger-download') {
+                globalUpdateBanner.style.display = 'flex';
+                btnGlobalDownload.style.display = 'none';
+                btnGlobalInstall.style.display = 'none';
+                if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'block';
+                if (globalUpdateProgressFill) globalUpdateProgressFill.style.width = '0%';
+                if (globalUpdateText) {
+                    globalUpdateText.textContent = currentLang === 'en' ? 'Downloading update...' : '正在下载更新...';
+                    globalUpdateText.style.color = '';
+                }
+                // Call download API in backend
+                if (window.api.downloadUpdate) window.api.downloadUpdate();
+            } else if (msg.type === 'update-available') {
+                const ver = msg.info.version;
+                globalUpdateBanner.style.display = 'flex';
+                btnGlobalDownload.style.display = 'inline-block';
+                btnGlobalInstall.style.display = 'none';
+                if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'none';
+                if (globalUpdateText) {
+                    globalUpdateText.textContent = currentLang === 'en' ? `New version v${ver} is available!` : `发现新版本 v${ver} ！`;
+                    globalUpdateText.style.color = '';
+                }
+            } else if (msg.type === 'update-not-available') {
+                globalUpdateBanner.style.display = 'none';
+            } else if (msg.type === 'download-progress') {
+                globalUpdateBanner.style.display = 'flex';
+                btnGlobalDownload.style.display = 'none';
+                btnGlobalInstall.style.display = 'none';
+                if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'block';
+                const percent = msg.progress.percent || 0;
+                if (globalUpdateProgressFill) globalUpdateProgressFill.style.width = `${percent}%`;
+                if (globalUpdateText) {
+                    globalUpdateText.textContent = currentLang === 'en' 
+                        ? `Downloading update... ${Math.round(percent)}%` 
+                        : `正在下载更新... ${Math.round(percent)}%`;
+                    globalUpdateText.style.color = '';
+                }
+            } else if (msg.type === 'update-downloaded') {
+                globalUpdateBanner.style.display = 'flex';
+                btnGlobalDownload.style.display = 'none';
+                btnGlobalInstall.style.display = 'inline-block';
+                if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'none';
+                if (globalUpdateText) {
+                    globalUpdateText.textContent = currentLang === 'en' 
+                        ? `Download complete! Ready to install v${currentVersion}.` 
+                        : `更新包下载完毕，准备好安装 v${currentVersion}。`;
+                    globalUpdateText.style.color = '#00ffaa';
+                }
+            } else if (msg.type === 'error') {
+                globalUpdateBanner.style.display = 'flex';
+                btnGlobalDownload.style.display = 'inline-block'; // Allow retry
+                btnGlobalInstall.style.display = 'none';
+                if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'none';
+                if (globalUpdateText) {
+                    globalUpdateText.textContent = (currentLang === 'en' ? 'Update failed: ' : '更新失败: ') + msg.error;
+                    globalUpdateText.style.color = '#ff5555';
+                }
             }
-        } else if (msg.type === 'update-available') {
-            const ver = msg.info.version;
-            updateStatusText.textContent = currentLang === 'en' ? `New version available! (${ver})` : `发现新版本！ (${ver})`;
-            updateStatusText.style.color = '#00ffaa';
-            btnDownloadUpdate.style.display = 'inline-block';
-            btnInstallUpdate.style.display = 'none';
-            updateProgressBar.style.display = 'none';
-        } else if (msg.type === 'update-not-available') {
-            updateStatusText.textContent = currentLang === 'en' ? 'You are on the latest version.' : '当前已经是最新版本。';
-            updateStatusText.style.color = 'var(--text-secondary)';
-            btnDownloadUpdate.style.display = 'none';
-            btnInstallUpdate.style.display = 'none';
-            updateProgressBar.style.display = 'none';
-        } else if (msg.type === 'download-progress') {
-            updateProgressBar.style.display = 'block';
-            const percent = msg.progress.percent || 0;
-            updateProgressFill.style.width = `${percent}%`;
-            updateStatusText.textContent = currentLang === 'en' 
-                ? `Downloading... ${Math.round(percent)}%` 
-                : `下载中... ${Math.round(percent)}%`;
-        } else if (msg.type === 'update-downloaded') {
-            updateProgressBar.style.display = 'none';
-            updateStatusText.textContent = currentLang === 'en' ? 'Download complete. Ready to install.' : '下载完成。准备好安装。';
-            updateStatusText.style.color = '#00ffaa';
-            btnDownloadUpdate.style.display = 'none';
-            btnInstallUpdate.style.display = 'inline-block';
-        } else if (msg.type === 'error') {
-            updateStatusText.textContent = (currentLang === 'en' ? 'Update Error: ' : '更新错误: ') + msg.error;
-            updateStatusText.style.color = '#ff5555';
-            btnDownloadUpdate.style.display = 'none';
-            btnInstallUpdate.style.display = 'none';
-            updateProgressBar.style.display = 'none';
         }
     });
 }
