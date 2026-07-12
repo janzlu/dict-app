@@ -6,6 +6,60 @@ const toastBox = document.getElementById('toast');
 const closeBtn = document.getElementById('closeBtn');
 const saveWordBtn = document.getElementById('saveWordBtn');
 
+// Screenshot Thumbnail & Lightbox Elements
+const screenshotThumbnailContainer = document.getElementById('screenshotThumbnailContainer');
+const screenshotThumbnail = document.getElementById('screenshotThumbnail');
+const imageLightbox = document.getElementById('imageLightbox');
+const lightboxClose = document.getElementById('lightboxClose');
+const lightboxImage = document.getElementById('lightboxImage');
+
+function showScreenshotThumbnail(imageSrc) {
+    if (screenshotThumbnail && screenshotThumbnailContainer) {
+        screenshotThumbnail.src = imageSrc;
+        screenshotThumbnailContainer.style.display = 'block';
+        adjustHeight();
+    }
+}
+
+function hideScreenshotThumbnail() {
+    if (screenshotThumbnailContainer) {
+        screenshotThumbnailContainer.style.display = 'none';
+        adjustHeight();
+    }
+}
+
+// Open lightbox modal
+if (screenshotThumbnail) {
+    screenshotThumbnail.addEventListener('click', () => {
+        if (imageLightbox && lightboxImage && screenshotThumbnail.src) {
+            lightboxImage.src = screenshotThumbnail.src;
+            if (window.api.resizeWindow) {
+                window.api.resizeWindow(400);
+            }
+            imageLightbox.style.display = 'flex';
+        }
+    });
+}
+
+// Close lightbox modal
+const closeLightbox = () => {
+    if (imageLightbox) {
+        imageLightbox.style.display = 'none';
+        adjustHeight();
+    }
+};
+
+if (lightboxClose) {
+    lightboxClose.addEventListener('click', closeLightbox);
+}
+if (imageLightbox) {
+    imageLightbox.addEventListener('click', (e) => {
+        if (e.target === imageLightbox) {
+            closeLightbox();
+        }
+    });
+}
+
 let currentWord = null;
 let currentPhonetic = null;
 let currentTranslation = null;
@@ -54,6 +108,7 @@ searchInput.addEventListener('keydown', async (e) => {
 
 searchInput.addEventListener('input', () => {
     resultArea.classList.remove('visible');
+    hideScreenshotThumbnail();
     adjustHeight();
 });
 
@@ -66,8 +121,25 @@ window.addEventListener('keydown', (e) => {
 
 // Removed global click listener to use specific phonetic audio hooks
 
-async function performSearch(word) {
+async function performSearch(word, keepThumbnail = false) {
     try {
+        // Clear previous results and show a subtle loading state
+        wordPhonetic.style.display = 'none';
+        wordPhonetic.innerHTML = '';
+        if (!keepThumbnail) {
+            hideScreenshotThumbnail();
+        }
+        wordDefinition.innerHTML = `
+            <div style="text-align: center; padding: 16px 0; color: var(--text-secondary);">
+                <svg class="spinner" viewBox="0 0 50 50" style="width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle;">
+                    <circle cx="25" cy="25" r="20" fill="none" stroke="var(--accent-color, #fbc531)" stroke-width="5" stroke-linecap="round" stroke-dasharray="80, 200" stroke-dashoffset="0"></circle>
+                </svg>
+                <span style="margin-left: 8px; font-size: 13px; vertical-align: middle;">Searching...</span>
+            </div>
+        `;
+        resultArea.classList.add('visible');
+        adjustHeight();
+
         const response = await window.api.searchWord(word);
         
         if (response.error) {
@@ -260,6 +332,7 @@ if (window.api.onScreenshotOcrStart) {
     window.api.onScreenshotOcrStart(() => {
         searchInput.value = '正在识别截图中...';
         searchInput.disabled = true;
+        hideScreenshotThumbnail();
         
         // Show progress overlay inside definition card
         wordPhonetic.innerHTML = '';
@@ -278,10 +351,21 @@ if (window.api.onScreenshotOcrStart) {
 }
 
 if (window.api.onScreenshotOcrSuccess) {
-    window.api.onScreenshotOcrSuccess((text) => {
+    window.api.onScreenshotOcrSuccess((payload) => {
         searchInput.disabled = false;
+        
+        const text = typeof payload === 'string' ? payload : (payload.text || '');
+        const image = typeof payload === 'object' ? payload.image : null;
+        
         searchInput.value = text;
-        performSearch(text);
+        
+        if (image) {
+            showScreenshotThumbnail(image);
+        } else {
+            hideScreenshotThumbnail();
+        }
+        
+        performSearch(text, true);
         searchInput.focus();
         searchInput.select();
     });
@@ -291,6 +375,7 @@ if (window.api.onScreenshotOcrError) {
     window.api.onScreenshotOcrError((err) => {
         searchInput.disabled = false;
         searchInput.value = '';
+        hideScreenshotThumbnail();
         
         wordPhonetic.innerHTML = '';
         wordDefinition.innerHTML = `

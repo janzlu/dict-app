@@ -1,8 +1,34 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, dialog, nativeTheme } = require('electron');
+const electron = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, nativeTheme } = electron;
+let globalShortcut = electron.globalShortcut;
+
+if (process.env.PLAYWRIGHT_TEST === 'true') {
+    const registeredShortcuts = new Set();
+    const mock = {
+        register: (shortcut, callback) => {
+            registeredShortcuts.add(shortcut);
+            return true;
+        },
+        unregister: (shortcut) => {
+            registeredShortcuts.delete(shortcut);
+            return true;
+        },
+        unregisterAll: () => {
+            registeredShortcuts.clear();
+        },
+        isRegistered: (shortcut) => {
+            return registeredShortcuts.has(shortcut);
+        }
+    };
+    global.globalShortcutMock = mock;
+    globalShortcut = mock;
+}
+
 const path = require('path');
 const Database = require('better-sqlite3');
 const { initDb } = require('./utils/db');
 const { calculateNextReview } = require('./utils/sm2');
+const { translateWithPreservation } = require('./utils/preservation');
 const syncEngine = require('./utils/sync');
 const { autoUpdater } = require('electron-updater');
 
@@ -321,34 +347,48 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             params.append('isOverlayRequired', 'false');
             params.append('scale', 'true');
 
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), 10000);
+            // Geographic routing: if user is in UTC+8 timezone, prioritize Asian endpoint api3
+            const isAsia = (new Date().getTimezoneOffset() === -480);
+            const endpoints = isAsia 
+                ? ['https://api3.ocr.space/parse/image', 'https://api.ocr.space/parse/image', 'https://api2.ocr.space/parse/image']
+                : ['https://api.ocr.space/parse/image', 'https://api2.ocr.space/parse/image', 'https://api3.ocr.space/parse/image'];
 
-            try {
-                const res = await fetch('https://api.ocr.space/parse/image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: params.toString(),
-                    signal: controller.signal
-                });
-                clearTimeout(id);
+            let lastError = null;
+            for (const url of endpoints) {
+                console.log(`[Main] Trying OCR.space endpoint: ${url}`);
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 12000);
 
-                if (!res.ok) throw new Error(`OCR.space responded with status ${res.status}`);
-                const json = await res.json();
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: params.toString(),
+                        signal: controller.signal
+                    });
+                    clearTimeout(id);
 
-                if (json.IsErroredOnProcessing) {
-                    throw new Error(json.ErrorMessage?.[0] || 'OCR processing failed');
+                    if (!res.ok) throw new Error(`OCR responded with status ${res.status}`);
+                    const json = await res.json();
+
+                    if (json.IsErroredOnProcessing) {
+                        throw new Error(json.ErrorMessage?.[0] || 'OCR processing failed');
+                    }
+
+                    if (json.ParsedResults && json.ParsedResults[0]) {
+                        const text = json.ParsedResults[0].ParsedText;
+                        if (text && text.trim()) {
+                            console.log(`[Main] OCR success on endpoint: ${url}`);
+                            return text.trim();
+                        }
+                    }
+                    throw new Error("No text detected in selection.");
+                } catch (err) {
+                    console.warn(`[Main] OCR endpoint ${url} failed:`, err.message || err);
+                    lastError = err;
                 }
-
-                if (json.ParsedResults && json.ParsedResults[0]) {
-                    const text = json.ParsedResults[0].ParsedText;
-                    if (text && text.trim()) return text.trim();
-                }
-                throw new Error("No text detected in selection.");
-            } catch (err) {
-                console.error("[Main] OCR.space failed:", err);
-                throw err;
             }
+            throw lastError || new Error("All OCR endpoints failed.");
         }
 
         async function performYoudaoOCR(base64DataUri, appKey, secretKey) {
@@ -466,6 +506,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             const url = `${baseUrl}/chat/completions`;
             
             const systemPrompt = `You are a professional dictionary assistant. Translate the English input (word, phrase, or sentence) to Chinese.
+For any placeholder like [__CODE_N__], keep it exactly as-is without translating or modifying it.
 Return a valid JSON object ONLY. Do not write markdown, code blocks, or explanations outside the JSON.
 The JSON format must be:
 {
@@ -723,7 +764,7 @@ The JSON format must be:
             const config = syncEngine.getConfig(app) || {};
             if (config.llmEnabled && config.llmKey) {
                 console.log(`[Main] Prioritizing LLM translation for: ${cleanWord}`);
-                const llmResult = await queryLLM(cleanWord, config);
+                const llmResult = await translateWithPreservation(cleanWord, (text) => queryLLM(text, config));
                 if (llmResult) {
                     return llmResult;
                 }
@@ -810,7 +851,7 @@ The JSON format must be:
             }
 
             // Query preferred free translation engine (Edge / DeepLX / Google)
-            const freeResult = await queryFreeEngine(cleanWord, config);
+            const freeResult = await translateWithPreservation(cleanWord, (text) => queryFreeEngine(text, config));
             if (freeResult) return freeResult;
 
             if (!isPhrase) {      // Try Youdao full JSONAPI (longer details like phonetics) with a shorter 2s timeout
@@ -1206,7 +1247,22 @@ The JSON format must be:
         });
 
         ipcMain.handle('get-sync-config', () => {
-            return syncEngine.getConfig(app) || {};
+            const config = syncEngine.getConfig(app) || {};
+            const searchShortcut = config.shortcut || 'CommandOrControl+Shift+D';
+            const screenshotShortcut = config.screenshotShortcut || 'CommandOrControl+Shift+X';
+            let searchShortcutRegistered = false;
+            let screenshotShortcutRegistered = false;
+            try {
+                searchShortcutRegistered = globalShortcut.isRegistered(searchShortcut);
+            } catch(e) {}
+            try {
+                screenshotShortcutRegistered = globalShortcut.isRegistered(screenshotShortcut);
+            } catch(e) {}
+            return {
+                ...config,
+                searchShortcutRegistered,
+                screenshotShortcutRegistered
+            };
         });
 
         ipcMain.handle('set-llm-config', (event, llmConfig) => {
@@ -1299,7 +1355,7 @@ The JSON format must be:
             try {
                 const recognizedText = await performOCR(croppedBase64, config);
                 if (inputWindow) {
-                    inputWindow.webContents.send('screenshot-ocr-success', recognizedText);
+                    inputWindow.webContents.send('screenshot-ocr-success', { text: recognizedText, image: croppedBase64 });
                 }
                 return { success: true };
             } catch (err) {

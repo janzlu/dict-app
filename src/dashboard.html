@@ -146,7 +146,10 @@
                 <!-- Update UI Moved to bottom -->
 
                 <div class="form-group" style="margin-bottom: 30px;">
-                    <label data-i18n="label_shortcut">Spotlight Global Shortcut</label>
+                    <label style="display: flex; align-items: center; justify-content: space-between;">
+                        <span data-i18n="label_shortcut">Spotlight Global Shortcut</span>
+                        <span id="shortcutStatus" class="shortcut-status"></span>
+                    </label>
                     <div class="input-row">
                         <input type="text" id="shortcutInput" value="CommandOrControl+Shift+D" placeholder="e.g. CommandOrControl+Shift+D">
                         <button id="btnSaveShortcut" class="btn primary" data-i18n="btn_save_shortcut">Save Shortcut</button>
@@ -256,7 +259,10 @@
                 <p class="description" data-i18n="desc_screenshot_settings">配置截图翻译的全局快捷键、OCR 识别引擎及相关 API 密钥。</p>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label data-i18n="label_screenshot_shortcut">截图翻译快捷键 (Screenshot Global Shortcut)</label>
+                    <label style="display: flex; align-items: center; justify-content: space-between;">
+                        <span data-i18n="label_screenshot_shortcut">截图翻译快捷键 (Screenshot Global Shortcut)</span>
+                        <span id="screenshotShortcutStatus" class="shortcut-status"></span>
+                    </label>
                     <div class="input-row">
                         <input type="text" id="screenshotShortcutInput" value="CommandOrControl+Shift+X" placeholder="e.g. CommandOrControl+Shift+X">
                         <button id="btnSaveScreenshotShortcut" class="btn primary" data-i18n="btn_save_screenshot_shortcut">保存快捷键</button>

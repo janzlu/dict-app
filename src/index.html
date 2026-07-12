@@ -29,6 +29,9 @@
         <div id="resultArea" class="result-area">
             <div class="word-header">
                 <div id="wordPhonetic" class="word-phonetic" title="Click to listen"></div>
+                <div id="screenshotThumbnailContainer" class="thumbnail-container" style="display: none; margin-left: auto;">
+                    <img id="screenshotThumbnail" class="screenshot-thumbnail" alt="Screenshot Thumbnail" title="点击查看大图 / Click to view original">
+                </div>
             </div>
             <div id="wordDefinition" class="word-definition"></div>
             <button id="saveWordBtn" class="save-word-btn">加入生词本</button>
@@ -36,6 +39,12 @@
     </div>
     
     <div id="toast" class="toast">Added to Wordbook</div>
+
+    <!-- Lightbox Modal for Original Screenshot -->
+    <div id="imageLightbox" class="lightbox-modal" style="display: none;">
+        <span id="lightboxClose" class="lightbox-close">&times;</span>
+        <img id="lightboxImage" class="lightbox-content" alt="Original Screenshot">
+    </div>
 
     <script src="app.js"></script>
 </body>

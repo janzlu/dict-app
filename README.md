@@ -1,5 +1,5 @@
 # 🌌 识光 Lumina
-![Version](https://img.shields.io/badge/version-v1.8.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v1.8.2-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-Desktop-47848f)
 ![Platform](https://img.shields.io/badge/platform-Win%20%7C%20Mac-lightgrey)
 
@@ -19,6 +19,12 @@
   - 本地直调高性能脱机 Lite 词库引擎（零延迟响应）。
   - 连接 Google Translate Neural 引擎实现长段落（高达 3000 字符）智能全句翻译。
   - 自动识别“中英混杂”段落，**仅翻译外语部分**，原生字串全息填充！
+- **📸 全域截图翻译 (Global Screenshot Translation)**:
+  - **快捷唤起与选区捕捉**：支持 `CommandOrControl+Shift+X` 系统级快捷键，零延迟捕获屏幕并启用流畅的选区裁剪。
+  - **交互式缩略图与 Lightbox**：查词大面板智能嵌入截图缩略图，点击可在磨砂毛玻璃遮罩中调出全屏高保真 Lightbox 大图浏览器。
+  - **智能代码/中文保护**：内置非重叠占位符隔离器，100% 保护截图中的代码语法、变量、注释、HTML标签及已存中文字符不被翻译引擎破坏。
+  - **配置化术语直译映射**：基于 `resources/glossary.json` 进行词汇表前置预匹配替换（如 `Auto-Pop` 自动弹出），保证翻译句式与语序自然得体。
+  - **近源 OCR 路由与容灾备用**：自适应路由至 `ocr.space` 亚洲就近节点（`api3`）并配有主备服务器轮询重试链路，彻底规避跨国网络连接超时痛点。
 - **☁️ 免服务跨端无感同步 (Serverless CRDT Sync)**: 不依赖任何第三方云端后端服务器。只需指定你的任一本地网盘目录（如 OneDrive），底层将自动进行多端字典的合并比对与冲突消解。
 - **📋 沉浸式剪贴板嗅探**: 一键开启，选中文本复制即刻唤出极速智能翻译面板。
 
@@ -66,11 +72,12 @@ npm run dist:mac
 │   ├── app.html/js          # Spotlight 核心搜索框与输入捕获逻辑
 │   ├── dashboard.html/js    # 基于变色龙引擎的生词本总览及沉浸式设置中心
 │   └── flashcard.html/js    # 交互评分卡片、以及 Slideshow 屏保自动化翻转模块
-├── src/utils/
+├── utils/
 │   ├── db.js                # SQLite 数据库底层读写操作封装
 │   ├── sm2.js               # 艾宾浩斯 Spaced Repetition 核心记忆演算法式
-│   └── sync.js              # Serverless 无代理本地多端云盘 LWW-CRDT 冲突消解引擎
-└── resources/               # 图标及 SQLite Lite 版备用冷启动数据库
+│   ├── sync.js              # Serverless 无代理本地多端云盘 LWW-CRDT 冲突消解引擎
+│   └── preservation.js      # 智能词法匹配、中文保护及占位符翻译术语处理引擎
+└── resources/               # 图标、SQLite Lite 备用库以及 glossary.json 智能翻译术语映射表
 ```
 
 ## 📜 许可证 / License

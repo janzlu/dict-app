@@ -52,6 +52,8 @@ const locales = {
         btn_install_update: "Install & Relaunch",
         label_autopopup: "Clipboard Auto-Pop",
         desc_autopopup: "Automatically show Spotlight when a short English text is copied",
+        label_autoreview: "Ebbinghaus Auto-Pop",
+        desc_autoreview: "Silently interrupt with Ebbinghaus memory cards when due",
         title_llm_settings: "AI Translation Engine Settings",
         desc_llm_settings: "Configure your custom Large Language Model (e.g. DeepSeek, OpenAI) for contextual, high-precision translation.",
         label_llm_enabled: "Enable AI Translation",
@@ -117,6 +119,8 @@ const locales = {
         btn_install_update: "立即安装并重启",
         label_autopopup: "划词复制唤起",
         desc_autopopup: "默认开启。当您按下复制键提取短语文本时，将零延迟触发弹出大面板进行光速查词",
+        label_autoreview: "艾宾浩斯自动弹出",
+        desc_autoreview: "默认开启。当背诵卡片到期时，在后台静默唤起艾宾浩斯记忆闪卡进行复习",
         title_llm_settings: "AI 智能大模型翻译引擎",
         desc_llm_settings: "配置自定义大模型（如 DeepSeek、OpenAI）以获得最具上下文感知、极高精度的查词与句子翻译体验。",
         label_llm_enabled: "启用 AI 智能翻译",
@@ -430,6 +434,34 @@ async function loadSyncConfig() {
         if (youdaoOcrAppKeyInput) youdaoOcrAppKeyInput.value = config.youdaoOcrAppKey || '';
         if (youdaoOcrSecretKeyInput) youdaoOcrSecretKeyInput.value = config.youdaoOcrSecretKey || '';
         if (ocrLangSelect) ocrLangSelect.value = config.ocrLang || 'eng';
+
+        // Display Shortcut Status Badges
+        const shortcutStatus = document.getElementById('shortcutStatus');
+        const screenshotShortcutStatus = document.getElementById('screenshotShortcutStatus');
+
+        if (shortcutStatus) {
+            if (config.searchShortcutRegistered) {
+                shortcutStatus.className = 'shortcut-status active';
+                shortcutStatus.innerHTML = currentLang === 'zh' ? '● 激活' : '● Active';
+                shortcutStatus.title = currentLang === 'zh' ? '该全局快捷键已成功注册，在任何界面均可使用。' : 'This global shortcut is successfully registered and active.';
+            } else {
+                shortcutStatus.className = 'shortcut-status conflict';
+                shortcutStatus.innerHTML = currentLang === 'zh' ? '● 冲突' : '● Conflict';
+                shortcutStatus.title = currentLang === 'zh' ? '该快捷键已被系统或其他应用占用/无效，请尝试更改为其他组合。' : 'This shortcut is already occupied by the system or another app, please try another combination.';
+            }
+        }
+
+        if (screenshotShortcutStatus) {
+            if (config.screenshotShortcutRegistered) {
+                screenshotShortcutStatus.className = 'shortcut-status active';
+                screenshotShortcutStatus.innerHTML = currentLang === 'zh' ? '● 激活' : '● Active';
+                screenshotShortcutStatus.title = currentLang === 'zh' ? '该全域截图快捷键已成功注册，在任何界面均可使用。' : 'This screenshot global shortcut is successfully registered and active.';
+            } else {
+                screenshotShortcutStatus.className = 'shortcut-status conflict';
+                screenshotShortcutStatus.innerHTML = currentLang === 'zh' ? '● 冲突' : '● Conflict';
+                screenshotShortcutStatus.title = currentLang === 'zh' ? '该快捷键已被系统或其他应用占用/无效，请尝试更改为其他组合。' : 'This shortcut is already occupied by the system or another app, please try another combination.';
+            }
+        }
     }
 }
 
@@ -627,9 +659,25 @@ shortcutInput.addEventListener('keydown', (e) => {
     shortcutInput.value = keys.join('+');
 });
 
+// Validate helper to ensure shortcut format is correct and has a modifier
+function validateShortcut(value) {
+    if (!value) return false;
+    const parts = value.split('+');
+    const modifiers = ['CommandOrControl', 'Alt', 'Shift'];
+    const hasModifier = parts.some(part => modifiers.includes(part));
+    const lastPart = parts[parts.length - 1];
+    const hasValidKey = lastPart && lastPart !== '...' && !modifiers.includes(lastPart);
+    return hasModifier && hasValidKey;
+}
+
 btnSaveShortcut.addEventListener('click', async () => {
     const newShortcut = shortcutInput.value.trim();
     if (!newShortcut) return;
+
+    if (!validateShortcut(newShortcut)) {
+        alert(currentLang === 'zh' ? "快捷键格式无效。必须包含修饰键（如 Ctrl/Alt/Shift）和字母/数字。" : "Invalid shortcut format. Must include modifier(s) (e.g. Ctrl/Alt/Shift) and a key.");
+        return;
+    }
 
     const originalText = btnSaveShortcut.textContent;
     btnSaveShortcut.textContent = "Saving...";
@@ -638,11 +686,13 @@ btnSaveShortcut.addEventListener('click', async () => {
     if (res && res.success) {
         btnSaveShortcut.textContent = "Saved!";
         btnSaveShortcut.style.background = "#00d2ff"; // accent
+        await loadSyncConfig(); // Refresh status badges
         setTimeout(() => {
             btnSaveShortcut.textContent = originalText;
+            btnSaveShortcut.style.background = "";
         }, 2000);
     } else {
-        alert("Failed to register shortcut. The combination might be invalid or already in use by the OS.");
+        alert(currentLang === 'zh' ? "无法注册快捷键。该组合键可能无效或已被其他程序占用。" : "Failed to register shortcut. The combination might be invalid or already in use by the OS.");
         btnSaveShortcut.textContent = originalText;
     }
 });
@@ -1006,6 +1056,11 @@ if (btnSaveScreenshotShortcut) {
     btnSaveScreenshotShortcut.addEventListener('click', async () => {
         const newShortcut = screenshotShortcutInput.value.trim();
         if (!newShortcut) return;
+
+        if (!validateShortcut(newShortcut)) {
+            alert(currentLang === 'zh' ? "快捷键格式无效。必须包含修饰键（如 Ctrl/Alt/Shift）和字母/数字。" : "Invalid shortcut format. Must include modifier(s) (e.g. Ctrl/Alt/Shift) and a key.");
+            return;
+        }
         
         const originalText = btnSaveScreenshotShortcut.textContent;
         btnSaveScreenshotShortcut.textContent = "Saving...";
@@ -1016,6 +1071,7 @@ if (btnSaveScreenshotShortcut) {
                 if (res && res.success) {
                     btnSaveScreenshotShortcut.textContent = "Saved!";
                     btnSaveScreenshotShortcut.style.background = "#00d2ff";
+                    await loadSyncConfig(); // Refresh status badges
                     setTimeout(() => {
                         btnSaveScreenshotShortcut.textContent = originalText;
                         btnSaveScreenshotShortcut.style.background = "";
@@ -1044,6 +1100,15 @@ if (btnSaveScreenshotSettings) {
         const ocrLang = document.getElementById('ocrLangSelect').value;
         
         const statusDiv = document.getElementById('screenshotTestStatus');
+
+        if (!validateShortcut(screenshotShortcut)) {
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+                statusDiv.style.color = '#ff3366';
+                statusDiv.textContent = currentLang === 'zh' ? '❌ 保存失败：快捷键格式无效，必须包含修饰键（如 Ctrl/Alt/Shift）和字母/数字。' : '❌ Save failed: Invalid shortcut format. Must include modifier(s) (e.g. Ctrl/Alt/Shift) and a key.';
+            }
+            return;
+        }
         
         if (window.api.setScreenshotConfig) {
             try {
@@ -1061,6 +1126,7 @@ if (btnSaveScreenshotSettings) {
                     if (res && res.success) {
                         statusDiv.style.color = '#00ffaa';
                         statusDiv.textContent = currentLang === 'zh' ? '✅ 截图 OCR 配置保存成功！' : '✅ Screenshot OCR Settings saved successfully!';
+                        await loadSyncConfig(); // Refresh status badges
                     } else {
                         statusDiv.style.color = '#ff3366';
                         const errMsg = res && res.error ? `: ${res.error}` : "";

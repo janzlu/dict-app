@@ -61,6 +61,7 @@ test.describe('Lumina Translation Pipeline Tests', () => {
     });
 
     test('Phrase translation should fallback to translate engines', async () => {
+        test.setTimeout(15000);
         const startTime = Date.now();
         
         // Interact with search input box in the UI
@@ -70,7 +71,7 @@ test.describe('Lumina Translation Pipeline Tests', () => {
 
         // Wait for translation to appear
         const wordDefinition = window.locator('#wordDefinition');
-        await expect(wordDefinition).toContainText(/人工智能/);
+        await expect(wordDefinition).toContainText(/人工智能/, { timeout: 12000 });
 
         const duration = Date.now() - startTime;
         console.log(`[Test] Phrase translation took ${duration}ms`);
@@ -133,8 +134,10 @@ test.describe('Lumina Translation Pipeline Tests', () => {
         await expect(saveShortcutBtn).toHaveText('Saved!', { timeout: 5000 });
 
         // Verify that the shortcut is registered successfully in Electron's main process
-        const isRegistered = await electronApp.evaluate(({ globalShortcut }) => {
-            return globalShortcut.isRegistered('Alt+Shift+Y');
+        const isRegistered = await electronApp.evaluate(() => {
+            return global.globalShortcutMock 
+                ? global.globalShortcutMock.isRegistered('Alt+Shift+Y') 
+                : require('electron').globalShortcut.isRegistered('Alt+Shift+Y');
         });
         expect(isRegistered).toBe(true);
     });

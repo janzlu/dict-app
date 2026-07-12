@@ -395,6 +395,33 @@ select {
     color: var(--text-primary);
 }
 
+/* Shortcut Status Indicators */
+.shortcut-status {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.shortcut-status.active {
+    background: rgba(0, 255, 170, 0.1);
+    color: #00ffaa;
+    border-color: rgba(0, 255, 170, 0.25);
+}
+
+.shortcut-status.conflict {
+    background: rgba(255, 51, 102, 0.1);
+    color: #ff3366;
+    border-color: rgba(255, 51, 102, 0.25);
+}
+
 /* =========================================
    LIGHT MODE OVERRIDES (OS NATIVE MATCHING)
    Must be at the very bottom to ensure CSS cascading precedence
@@ -511,5 +538,16 @@ select {
     }
     .modal-content {
         box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+
+    .shortcut-status.active {
+        background: rgba(0, 150, 100, 0.08);
+        color: #008855;
+        border-color: rgba(0, 150, 100, 0.2);
+    }
+    .shortcut-status.conflict {
+        background: rgba(220, 30, 70, 0.08);
+        color: #cc1144;
+        border-color: rgba(220, 30, 70, 0.2);
     }
 }
