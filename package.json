@@ -23,7 +23,8 @@
         "provider": "github",
         "owner": "janzlu",
         "repo": "dict-app",
-        "releaseType": "release"
+        "releaseType": "release",
+        "timeout": 600000
       }
     ],
     "win": {
