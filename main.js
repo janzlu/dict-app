@@ -1508,6 +1508,10 @@ The JSON format must be:
         // --- Updater IPCs ---
         autoUpdater.autoDownload = false;
         autoUpdater.autoInstallOnAppQuit = false; // We want manual control or explicit
+        autoUpdater.setFeedURL({
+            provider: 'generic',
+            url: 'https://dict-app-web.vercel.app/'
+        });
 
         ipcMain.handle('check-update', async () => {
             try {
