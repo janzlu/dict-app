@@ -22,7 +22,8 @@
       {
         "provider": "github",
         "owner": "janzlu",
-        "repo": "dict-app"
+        "repo": "dict-app",
+        "releaseType": "release"
       }
     ],
     "win": {
