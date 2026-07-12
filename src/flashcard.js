@@ -14,20 +14,21 @@ let slideshowNextTimer = null;
 window.api.onReviewWord((wordData) => {
     currentWordData = wordData;
     wordBox.textContent = wordData.word;
+    wordBox.classList.remove('success-word');
     let displayPhonetic = wordData.phonetic || '';
-    const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+    const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 6px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
     const safeWord = wordData.word.replace(/'/g, "\\'");
 
     const dualMatch = displayPhonetic.match(/(UK|英)\s*\/([^/]+)\/\s*(US|美)\s*\/([^/]+)\//);
     if (dualMatch) {
         phoneticBox.innerHTML = 
-            `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}', 1)">${speakerSVG}${dualMatch[1]} /${dualMatch[2]}/</span> &nbsp;&nbsp; ` +
-            `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}', 2)">${speakerSVG}${dualMatch[3]} /${dualMatch[4]}/</span>`;
+            `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}', 1)">${dualMatch[1]} /${dualMatch[2]}/ ${speakerSVG}</span> &nbsp;&nbsp; ` +
+            `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}', 2)">${dualMatch[3]} /${dualMatch[4]}/ ${speakerSVG}</span>`;
     } else if (displayPhonetic) {
         if (!displayPhonetic.includes('/')) displayPhonetic = `/${displayPhonetic}/`;
-        phoneticBox.innerHTML = `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}')">${speakerSVG}${displayPhonetic}</span>`;
+        phoneticBox.innerHTML = `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}')">${displayPhonetic} ${speakerSVG}</span>`;
     } else {
-        phoneticBox.innerHTML = `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}')">${speakerSVG}点击发音</span>`;
+        phoneticBox.innerHTML = `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}')">点击发音 ${speakerSVG}</span>`;
     }
     
     phoneticBox.style.cursor = 'default';
@@ -63,7 +64,10 @@ let startScreenX = 0, startScreenY = 0;
 let hasMoved = false;
 
 card.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'BUTTON') return;
+    // If not docked, ignore buttons so they are clickable
+    if (!document.body.classList.contains('docked')) {
+        if (e.target.closest('button')) return;
+    }
     
     isDragging = true;
     hasMoved = false;
@@ -88,12 +92,20 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mouseup', (e) => {
     if (isDragging) {
         isDragging = false;
-        if (!hasMoved) {
-            // It was a click, not a drag. Flip it!
-            card.classList.add('flipped');
+        if (document.body.classList.contains('docked')) {
+            if (hasMoved) {
+                // Dragged! Tell main process to snap to the nearest edge
+                window.api.snapToEdge();
+            }
+        } else {
+            if (!hasMoved) {
+                // It was a click, not a drag. Flip it!
+                card.classList.add('flipped');
+            }
         }
     }
 });
+
 
 window.playAudio = function(event, word, type) {
     if (event) event.stopPropagation();
@@ -113,6 +125,7 @@ function submitScore(score) {
     if (!currentWordData) return;
     window.api.submitReview(currentWordData.id, currentWordData.mastery_level, score);
     wordBox.textContent = "Great job!";
+    wordBox.classList.add('success-word');
     phoneticBox.textContent = "";
     transBox.textContent = "Loading next...";
     card.classList.remove('flipped');
@@ -137,13 +150,48 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-closeBtn.addEventListener('click', () => {
+closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     window.api.hideFlashcard();
+});
+
+const dockBtn = document.getElementById('dockBtn');
+dockBtn.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('docked')) {
+        e.stopPropagation();
+        window.api.toggleDock();
+    }
+});
+
+card.addEventListener('click', (e) => {
+    if (document.body.classList.contains('docked')) {
+        e.stopPropagation();
+        if (hasMoved) return;
+        window.api.toggleDock();
+    }
+});
+
+
+
+// IPC listener for docking state changes
+window.api.onDockStateChanged((isDocked, side) => {
+    if (isDocked) {
+        document.body.classList.add('docked');
+        document.body.classList.remove('dock-left', 'dock-right');
+        document.body.classList.add(`dock-${side}`);
+    } else {
+        document.body.classList.remove('docked', 'dock-left', 'dock-right');
+    }
 });
 
 // --- Dynamic Mouse Passthrough Engine ---
 // Make the card clickable but let transparent areas pass clicks through to native OS
 window.addEventListener('mousemove', (event) => {
+    if (document.body.classList.contains('docked')) {
+        // When docked, the window is exactly the size of the bubble. Capture mouse!
+        window.api.setIgnoreMouse(false);
+        return;
+    }
     // If hovered over the app root instead of the card container components
     if (event.target === document.documentElement || event.target === document.body) {
         window.api.setIgnoreMouse(true, { forward: true });
@@ -160,3 +208,4 @@ document.body.addEventListener('mouseleave', () => {
 
 // Ensure default state is ghost-like
 window.api.setIgnoreMouse(true, { forward: true });
+

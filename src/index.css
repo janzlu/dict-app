@@ -50,6 +50,7 @@ html, body {
     gap: 12px;
     -webkit-app-region: no-drag; /* Inputs must not be draggable */
     flex-shrink: 0;
+    margin-right: 32px;
 }
 
 .search-icon {
@@ -161,6 +162,26 @@ html, body {
     color: var(--text-primary);
     -webkit-app-region: no-drag;
     user-select: text;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.word-definition::-webkit-scrollbar {
+    width: 4px;
+}
+
+.word-definition::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.word-definition::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.word-definition::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .toast {
@@ -178,3 +199,27 @@ html, body {
 .toast.show {
     opacity: 1;
 }
+
+.search-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 6px;
+    transition: 0.2s;
+    -webkit-app-region: no-drag;
+}
+.search-action-btn:hover {
+    color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+

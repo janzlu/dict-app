@@ -101,6 +101,25 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 30px;">
+                    <label data-i18n="label_free_engine">Free Translation Engine</label>
+                    <div class="input-row">
+                        <select id="freeEngineSelect">
+                            <option value="edge" data-i18n="engine_edge">Microsoft Edge Translate (Domestic Optimized)</option>
+                            <option value="deeplx" data-i18n="engine_deeplx">DeepLX Translate (High-Speed Mirror / Self-hosted)</option>
+                            <option value="google" data-i18n="engine_google">Google Translate (GTX API)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="deeplxUrlGroup" style="margin-bottom: 30px; display: none;">
+                    <label data-i18n="label_deeplx_url">DeepLX API Endpoint URL</label>
+                    <div class="input-row">
+                        <input type="text" id="deeplxUrlInput" placeholder="e.g. http://127.0.0.1:1188/translate">
+                    </div>
+                </div>
+
+
+                <div class="form-group" style="margin-bottom: 30px;">
                     <label data-i18n="label_autostart">Start on Boot</label>
                     <div class="input-row checkbox-wrapper">
                         <input type="checkbox" id="autoStartCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;">
@@ -179,7 +198,124 @@
                     </div>
                 </div>
             </div>
+
+            <!-- AI / LLM Translation Engine Settings -->
+            <div class="settings-card" style="margin-top: 20px;">
+                <h3 data-i18n="title_llm_settings">AI / LLM Translation Engine</h3>
+                <p class="description" data-i18n="desc_llm_settings">Configure your custom Large Language Model (e.g. DeepSeek, OpenAI) for contextual, high-precision translation.</p>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_llm_enabled">Enable AI Translation</label>
+                    <div class="input-row checkbox-wrapper">
+                        <input type="checkbox" id="llmEnabledCheckbox" style="transform: scale(1.1); margin: 0; cursor: pointer;">
+                        <span style="font-size: 14px; color: var(--text-secondary); cursor: pointer;" data-i18n="desc_llm_enabled" onclick="document.getElementById('llmEnabledCheckbox').click()">Prioritize LLM for translation when enabled and API key is set</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_llm_provider">AI Provider</label>
+                    <div class="input-row">
+                        <select id="llmProviderSelect">
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="custom">Custom (OpenAI-compatible)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_llm_url">API Base URL</label>
+                    <div class="input-row">
+                        <input type="text" id="llmUrlInput" placeholder="e.g. https://api.deepseek.com/v1">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_llm_key">API Key</label>
+                    <div class="input-row">
+                        <input type="password" id="llmKeyInput" placeholder="sk-...">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_llm_model">Model Name</label>
+                    <div class="input-row">
+                        <input type="text" id="llmModelInput" placeholder="e.g. deepseek-chat">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="btnSaveLlm" class="btn primary" data-i18n="btn_save_llm">Save AI Settings</button>
+                    <button id="btnTestLlm" class="btn secondary" data-i18n="btn_test_llm" style="margin-left: 10px;">Test Connection</button>
+                </div>
+            </div>
+
+            <!-- Screenshot Translation Settings -->
+            <div class="settings-card" style="margin-top: 20px;">
+                <h3 data-i18n="title_screenshot_settings">截图翻译设置 (Screenshot Translation)</h3>
+                <p class="description" data-i18n="desc_screenshot_settings">配置截图翻译的全局快捷键、OCR 识别引擎及相关 API 密钥。</p>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_screenshot_shortcut">截图翻译快捷键 (Screenshot Global Shortcut)</label>
+                    <div class="input-row">
+                        <input type="text" id="screenshotShortcutInput" value="CommandOrControl+Shift+X" placeholder="e.g. CommandOrControl+Shift+X">
+                        <button id="btnSaveScreenshotShortcut" class="btn primary" data-i18n="btn_save_screenshot_shortcut">保存快捷键</button>
+                    </div>
+                    <small style="color: var(--text-secondary); font-size: 12px; margin-top: 6px; display: block;" data-i18n="hint_shortcut">Modifiers: Command, Control, Alt, Shift. Example: Alt+Space</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_ocr_engine">OCR 识别引擎 (OCR Engine)</label>
+                    <div class="input-row">
+                        <select id="ocrEngineSelect">
+                            <option value="ocr_space">OCR.space (默认免 Key 免费引擎)</option>
+                            <option value="youdao">有道智云 OCR (高速稳定、需 API Key)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="ocrSpaceKeyGroup" style="margin-bottom: 20px;">
+                    <label data-i18n="label_ocr_key">OCR.space API Key (可选)</label>
+                    <div class="input-row">
+                        <input type="password" id="ocrKeyInput" placeholder="自定义 API Key，留空则使用内置公共 Key">
+                    </div>
+                </div>
+
+                <div class="form-group" id="youdaoOcrAppKeyGroup" style="margin-bottom: 20px; display: none;">
+                    <label data-i18n="label_youdao_ocr_app_key">有道 OCR App Key</label>
+                    <div class="input-row">
+                        <input type="text" id="youdaoOcrAppKeyInput" placeholder="输入有道智云应用 ID (App Key)">
+                    </div>
+                </div>
+
+                <div class="form-group" id="youdaoOcrSecretKeyGroup" style="margin-bottom: 20px; display: none;">
+                    <label data-i18n="label_youdao_ocr_secret_key">有道 OCR Secret Key</label>
+                    <div class="input-row">
+                        <input type="password" id="youdaoOcrSecretKeyInput" placeholder="输入有道智云应用密钥 (Secret Key)">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label data-i18n="label_ocr_lang">OCR 默认语种 (Target Language)</label>
+                    <div class="input-row">
+                        <select id="ocrLangSelect">
+                            <option value="eng">英语 (English)</option>
+                            <option value="chs">中文简体 (Chinese Simplified)</option>
+                            <option value="kor">韩语 (Korean)</option>
+                            <option value="jpn">日语 (Japanese)</option>
+                            <option value="fre">法语 (French)</option>
+                            <option value="ger">德语 (German)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="btnSaveScreenshotSettings" class="btn primary" data-i18n="btn_save_screenshot_settings">保存截图 OCR 设置</button>
+                </div>
+                <div id="screenshotTestStatus" style="display: none; margin-top: 12px; font-size: 13px; font-weight: 500;"></div>
+            </div>
         </div>
+
     </div>
     
     <!-- Help Modal -->

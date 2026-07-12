@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('api', {
     hideFlashcard: () => ipcRenderer.send('hide-flashcard'),
     setIgnoreMouse: (ignore, options) => ipcRenderer.send('set-ignore-mouse', ignore, options),
     moveFlashcardBy: (dx, dy) => ipcRenderer.send('move-flashcard-by', dx, dy),
+    toggleDock: () => ipcRenderer.send('toggle-dock'),
+    snapToEdge: () => ipcRenderer.send('snap-to-edge'),
+    onDockStateChanged: (callback) => ipcRenderer.on('dock-state-changed', (e, isDocked, side) => callback(isDocked, side)),
     
     // Phase 4: Dashboard & Sync
     getAllWords: () => ipcRenderer.invoke('get-all-words'),
@@ -41,6 +44,23 @@ contextBridge.exposeInMainWorld('api', {
     setAutoUpdate: (enabled) => ipcRenderer.invoke('set-autoupdate', enabled),
     getVersion: () => ipcRenderer.invoke('get-version'),
     
+    setLlmConfig: (config) => ipcRenderer.invoke('set-llm-config', config),
+    testLlmConnection: (config) => ipcRenderer.invoke('test-llm-connection', config),
+    setFreeEngineConfig: (config) => ipcRenderer.invoke('set-free-engine-config', config),
+    setScreenshotConfig: (config) => ipcRenderer.invoke('set-screenshot-config', config),
+    
+    
     // Auto-clipboard
-    onClipboardData: (callback) => ipcRenderer.on('clipboard-data', (e, text) => callback(text))
+    onClipboardData: (callback) => ipcRenderer.on('clipboard-data', (e, text) => callback(text)),
+    onUpdatePhonetics: (callback) => ipcRenderer.on('update-phonetics', (e, data) => callback(data)),
+    isTest: process.env.PLAYWRIGHT_TEST === 'true',
+
+    // Screenshot Translation
+    triggerScreenshot: () => ipcRenderer.send('trigger-screenshot'),
+    getScreenshotImage: () => ipcRenderer.invoke('get-screenshot-image'),
+    closeScreenshot: () => ipcRenderer.send('close-screenshot'),
+    completeScreenshot: (croppedBase64) => ipcRenderer.invoke('complete-screenshot', croppedBase64),
+    onScreenshotOcrStart: (callback) => ipcRenderer.on('screenshot-ocr-start', () => callback()),
+    onScreenshotOcrSuccess: (callback) => ipcRenderer.on('screenshot-ocr-success', (e, text) => callback(text)),
+    onScreenshotOcrError: (callback) => ipcRenderer.on('screenshot-ocr-error', (e, err) => callback(err))
 });

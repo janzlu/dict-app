@@ -18,7 +18,11 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
     let dashboardWindow;
     let tray = null;
     let db;
+    let ecdictDb = null;
     let reviewTimer = null;
+    let isFlashcardDocked = false;
+    let preDockBounds = null;
+    let dockSide = 'right';
 
     app.on('second-instance', (event, commandLine, workingDirectory) => {
         if (inputWindow) {
@@ -122,13 +126,16 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         // 5. Create the Flashcard Window
         flashcardWindow = new BrowserWindow({
             width: 340,
-            height: 180,
+            height: 200,
             frame: false,
             transparent: true,
+            hasShadow: false, // Turn off native OS rectangular shadow to remove grey corners
             resizable: false,
             alwaysOnTop: true,
             skipTaskbar: true,
             show: false,
+            backgroundMaterial: 'none', // Disable system background material for true transparency
+            vibrancy: 'popover',           // macOS blur support
             icon: iconPath,
             webPreferences: {
                 nodeIntegration: false,
@@ -150,6 +157,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         
         // Track position to save it
         flashcardWindow.on('moved', () => {
+             if (isFlashcardDocked) return;
              const [x, y] = flashcardWindow.getPosition();
              const currentConfig = syncEngine.getConfig(app) || {};
              currentConfig.flashcardX = x;
@@ -158,12 +166,26 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         });
 
         flashcardWindow.loadFile(path.join(__dirname, 'src', 'flashcard.html'));
+        console.log("=== FLASHCARD WINDOW INITIALIZED ===");
+        console.log("Electron version:", process.versions.electron);
+        console.log("setBackgroundMaterial exists:", typeof flashcardWindow.setBackgroundMaterial);
+        console.log("setVibrancy exists:", typeof flashcardWindow.setVibrancy);
 
-        // 5. Register Global Shortcut dynamically
-        function setupShortcut(accelerator) {
+
+        let screenshotWindow = null;
+        let lastScreenshotDataUrl = null;
+
+        // 5. Register Global Shortcuts dynamically
+        function setupGlobalShortcuts() {
             globalShortcut.unregisterAll();
+            const config = syncEngine.getConfig(app) || {};
+            const searchShortcut = config.shortcut || 'CommandOrControl+Shift+D';
+            const screenshotShortcut = config.screenshotShortcut || 'CommandOrControl+Shift+X';
+            
+            // 1. Register Search word global shortcut
+            let searchOk = false;
             try {
-                const ret = globalShortcut.register(accelerator, () => {
+                searchOk = globalShortcut.register(searchShortcut, () => {
                     if (inputWindow.isVisible()) {
                         inputWindow.hide();
                     } else {
@@ -177,27 +199,221 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                         inputWindow.focus();
                     }
                 });
-                if (!ret) throw new Error("Registration failed");
-                
-                // Update Context Menu
-                const contextMenu = Menu.buildFromTemplate([
-                    { label: `Search Word (${accelerator})`, click: () => { inputWindow.show(); inputWindow.focus(); } },
-                    { type: 'separator' },
-                    { label: '🎲 Shuffle Play Review', click: () => checkReviewQueue() },
-                    { type: 'separator' },
-                    { label: 'Dashboard & Sync', click: () => openDashboard() },
-                    { type: 'separator' },
-                    { label: 'Quit Lumina', click: () => { app.isQuitting = true; app.quit(); } }
-                ]);
-                tray.setContextMenu(contextMenu);
-                
-                return true;
             } catch(e) {
-                console.error("Failed to register shortcut:", e);
-                return false;
+                console.error("Failed to register search shortcut:", e);
+            }
+
+            // 2. Register Screenshot translation global shortcut
+            let screenshotOk = false;
+            try {
+                screenshotOk = globalShortcut.register(screenshotShortcut, () => {
+                    triggerScreenshotTranslation();
+                });
+            } catch(e) {
+                console.error("Failed to register screenshot shortcut:", e);
+            }
+
+            // Update Context Menu
+            const contextMenu = Menu.buildFromTemplate([
+                { label: `Search Word / 查词面板 (${searchShortcut})`, click: () => { inputWindow.show(); inputWindow.focus(); } },
+                { label: `Screenshot Translate / 截图翻译 (${screenshotShortcut})`, click: () => { triggerScreenshotTranslation(); } },
+                { type: 'separator' },
+                { label: '🎲 Shuffle Play Review', click: () => checkReviewQueue() },
+                { type: 'separator' },
+                { label: 'Dashboard & Sync', click: () => openDashboard() },
+                { type: 'separator' },
+                { label: 'Quit Lumina', click: () => { app.isQuitting = true; app.quit(); } }
+            ]);
+            tray.setContextMenu(contextMenu);
+
+            return { searchOk, screenshotOk };
+        }
+
+        async function triggerScreenshotTranslation() {
+            if (screenshotWindow) return;
+
+            const wasInputVisible = inputWindow.isVisible();
+            const wasFlashcardVisible = flashcardWindow && flashcardWindow.isVisible();
+
+            if (wasInputVisible) inputWindow.hide();
+            if (wasFlashcardVisible) flashcardWindow.hide();
+
+            // Wait brief transition delay for hides to clear
+            setTimeout(async () => {
+                try {
+                    const { screen, desktopCapturer } = require('electron');
+                    const cursorPoint = screen.getCursorScreenPoint();
+                    const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
+                    
+                    const scaleFactor = activeDisplay.scaleFactor;
+                    const width = Math.round(activeDisplay.bounds.width * scaleFactor);
+                    const height = Math.round(activeDisplay.bounds.height * scaleFactor);
+
+                    const sources = await desktopCapturer.getSources({
+                        types: ['screen'],
+                        thumbnailSize: { width, height }
+                    });
+
+                    let targetSource = sources.find(source => source.display_id === activeDisplay.id.toString());
+                    if (!targetSource) {
+                        targetSource = sources[0];
+                    }
+
+                    if (!targetSource) {
+                        throw new Error("No screen source captured");
+                    }
+
+                    lastScreenshotDataUrl = targetSource.thumbnail.toDataURL();
+
+                    const displayBounds = activeDisplay.bounds;
+                    screenshotWindow = new BrowserWindow({
+                        x: displayBounds.x,
+                        y: displayBounds.y,
+                        width: displayBounds.width,
+                        height: displayBounds.height,
+                        frame: false,
+                        transparent: true,
+                        alwaysOnTop: true,
+                        fullscreen: process.platform === 'darwin' ? false : true,
+                        enableLargerThanScreen: true,
+                        skipTaskbar: true,
+                        resizable: false,
+                        movable: false,
+                        webPreferences: {
+                            nodeIntegration: false,
+                            contextIsolation: true,
+                            preload: path.join(__dirname, 'preload.js')
+                        }
+                    });
+
+                    if (process.platform === 'darwin') {
+                        screenshotWindow.setSimpleFullScreen(true);
+                    }
+
+                    screenshotWindow.loadFile(path.join(__dirname, 'src', 'screenshot.html'));
+                    
+                    screenshotWindow.on('closed', () => {
+                        screenshotWindow = null;
+                    });
+
+                } catch (err) {
+                    console.error("Screenshot capture failed:", err);
+                    if (wasInputVisible) inputWindow.show();
+                    if (wasFlashcardVisible) flashcardWindow.show();
+                }
+            }, 150);
+        }
+
+        async function performOCR(base64Image, config) {
+            const engine = config.ocrEngine || 'ocr_space';
+            if (engine === 'youdao' && config.youdaoOcrAppKey && config.youdaoOcrSecretKey) {
+                return await performYoudaoOCR(base64Image, config.youdaoOcrAppKey, config.youdaoOcrSecretKey);
+            }
+            return await performOcrSpace(base64Image, config.ocrApiKey || 'helloworld', config.ocrLang || 'eng');
+        }
+
+        async function performOcrSpace(base64Image, apiKey, lang) {
+            console.log("[Main] OCR.space request...");
+            const params = new URLSearchParams();
+            params.append('apikey', apiKey);
+            params.append('base64Image', base64Image);
+            params.append('language', lang);
+            params.append('isOverlayRequired', 'false');
+            params.append('scale', 'true');
+
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 10000);
+
+            try {
+                const res = await fetch('https://api.ocr.space/parse/image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString(),
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+
+                if (!res.ok) throw new Error(`OCR.space responded with status ${res.status}`);
+                const json = await res.json();
+
+                if (json.IsErroredOnProcessing) {
+                    throw new Error(json.ErrorMessage?.[0] || 'OCR processing failed');
+                }
+
+                if (json.ParsedResults && json.ParsedResults[0]) {
+                    const text = json.ParsedResults[0].ParsedText;
+                    if (text && text.trim()) return text.trim();
+                }
+                throw new Error("No text detected in selection.");
+            } catch (err) {
+                console.error("[Main] OCR.space failed:", err);
+                throw err;
             }
         }
-        setupShortcut(initialConfig.shortcut || 'CommandOrControl+Shift+D');
+
+        async function performYoudaoOCR(base64DataUri, appKey, secretKey) {
+            console.log("[Main] Youdao OCR request...");
+            const base64Data = base64DataUri.replace(/^data:image\/\w+;base64,/, "");
+            const crypto = require('crypto');
+            const salt = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString();
+            const curtime = Math.round(new Date().getTime() / 1000).toString();
+            
+            const signStr = appKey + base64Data + salt + curtime + secretKey;
+            const sign = crypto.createHash('sha256').update(signStr).digest('hex');
+
+            const params = new URLSearchParams({
+                img: base64Data,
+                langType: 'auto',
+                detectType: '10012',
+                imageType: '1',
+                appKey: appKey,
+                salt: salt,
+                curtime: curtime,
+                sign: sign
+            });
+
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                const res = await fetch('https://openapi.youdao.com/ocrapi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString(),
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+
+                if (!res.ok) throw new Error(`Youdao OCR responded with status ${res.status}`);
+                const json = await res.json();
+                
+                if (json.errorCode !== '0') {
+                    throw new Error(`Youdao OCR Error Code ${json.errorCode}`);
+                }
+
+                if (json.Result && json.Result.regions) {
+                    const lines = [];
+                    for (const region of json.Result.regions) {
+                        if (region.lines) {
+                            for (const line of region.lines) {
+                                if (line.text) lines.push(line.text);
+                            }
+                        }
+                    }
+                    if (lines.length > 0) return lines.join('\n');
+                }
+                throw new Error("No text detected by Youdao OCR");
+            } catch (err) {
+                console.error("[Main] Youdao OCR failed:", err);
+                throw err;
+            }
+        }
+
+        try {
+            setupGlobalShortcuts();
+        } catch (e) {
+            console.error("Failed to initialize shortcuts on startup:", e);
+        }
         
         // 5.5 Clipboard Monitor
         const { clipboard: electronClipboard } = require('electron');
@@ -225,170 +441,491 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                     }
                 }
             }
-        }, 500);
+        }, 150);
+
 
         // 6. Database and IPC Handlers
         // Mount read-only ECDICT mock
         const ecdictPath = app.isPackaged 
             ? path.join(process.resourcesPath, 'resources', 'ecdict_lite.sqlite')
             : path.join(__dirname, 'resources', 'ecdict_lite.sqlite');
-        let ecdictDb = null;
         try {
              ecdictDb = new Database(ecdictPath, { readonly: true });
+             const start = performance.now();
+             const result = ecdictDb.prepare('SELECT * FROM stardict WHERE word = ? COLLATE NOCASE').get('body');
+             const end = performance.now();
+             console.log(`[ECDICT Test] query time for 'body': ${(end - start).toFixed(2)}ms`);
         } catch (err) {
              console.error("ECDICT load failed, skipping offline dict", err);
         }
 
-        ipcMain.handle('search-word', async (event, wordText) => {
-            console.log(`[Main] searching for: ${wordText}`);
-            // Check Local DB first
-            let stmt = db.prepare('SELECT * FROM words WHERE word = ? COLLATE NOCASE');
-            let result = stmt.get(wordText);
-            
-            if (result) return { source: 'local', data: result };
 
-            // Fallback to ECDICT
-            if (ecdictDb) {
-                stmt = ecdictDb.prepare('SELECT * FROM stardict WHERE word = ? COLLATE NOCASE');
-                result = stmt.get(wordText);
-                if (result) return { source: 'ecdict', data: result };
+        async function queryLLM(cleanWord, llmConfig) {
+            const { llmProvider, llmUrl, llmKey, llmModel } = llmConfig;
+            const baseUrl = (llmUrl || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+            const url = `${baseUrl}/chat/completions`;
+            
+            const systemPrompt = `You are a professional dictionary assistant. Translate the English input (word, phrase, or sentence) to Chinese.
+Return a valid JSON object ONLY. Do not write markdown, code blocks, or explanations outside the JSON.
+The JSON format must be:
+{
+  "word": "the input text",
+  "phonetic": "IPA phonetic spelling (leave blank for phrases/sentences)",
+  "translation": "concise and professional Chinese definition/translation"
+}`;
+
+            const payload = {
+                model: llmModel || 'deepseek-chat',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: cleanWord }
+                ],
+                temperature: 0.1,
+                max_tokens: 300
+            };
+
+            if (llmProvider === 'deepseek' || llmProvider === 'openai') {
+                payload.response_format = { type: "json_object" };
             }
-            
-            // Third Fallback: Online Dictionary API (For words not in our Lite Mock database)
-            const isPhrase = wordText.trim().includes(' ');
-            
+
             try {
-                if (!isPhrase) {
-                    try {
-                        const controller = new AbortController();
-                        const id = setTimeout(() => controller.abort(), 6000);
-                        const res = await fetch(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(wordText)}`, { signal: controller.signal });
-                        clearTimeout(id);
-                        
-                        if (res.ok) {
-                            const json = await res.json();
-                            let translation = '';
-                            let phonetic = '';
-                            
-                            let ukphone = '';
-                            let usphone = '';
-                            if (json.ec && json.ec.word && json.ec.word[0]) {
-                                const wordObj = json.ec.word[0];
-                                ukphone = wordObj.ukphone || '';
-                                usphone = wordObj.usphone || '';
-                                phonetic = usphone || ukphone || '';
-                                if (wordObj.trs && wordObj.trs.length > 0) {
-                                    translation = wordObj.trs.map(t => {
-                                        const i = t.tr?.[0]?.l?.i;
-                                        return Array.isArray(i) ? i.join('\n') : (i || '');
-                                    }).filter(Boolean).join('\n');
-                                }
-                            } else if (json.ce && json.ce.word && json.ce.word[0]) {
-                                const wordObj = json.ce.word[0];
-                                phonetic = wordObj.phone || '';
-                                if (wordObj.trs && wordObj.trs.length > 0) {
-                                    translation = wordObj.trs.map(t => {
-                                        const i = t.tr?.[0]?.l?.i;
-                                        return Array.isArray(i) ? i.join('\n') : (i || '');
-                                    }).filter(Boolean).join('\n');
-                                }
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 5000); // 5s timeout for LLM
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${llmKey}`
+                    },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                if (res.ok) {
+                    const json = await res.json();
+                    const content = json.choices[0].message.content.trim();
+                    const jsonStr = content.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+                    const parsed = JSON.parse(jsonStr);
+                    if (parsed.translation) {
+                        return {
+                            source: 'llm',
+                            data: {
+                                word: parsed.word || cleanWord,
+                                phonetic: parsed.phonetic || '',
+                                translation: parsed.translation
                             }
-                            
-                            if (!translation && json.web_trans && json.web_trans['web-translation']) {
-                                const webTrans = json.web_trans['web-translation'][0]?.trans;
-                                if (webTrans) translation = webTrans.map(t => t.value).join(', ');
-                            }
-
-                            if (!translation) {
-                                const sugController = new AbortController();
-                                const sugId = setTimeout(() => sugController.abort(), 5000);
-                                const sugRes = await fetch(`https://dict.youdao.com/suggest?num=1&ver=3.0&doctype=json&cache=false&le=en&q=${encodeURIComponent(wordText)}`, { signal: sugController.signal });
-                                clearTimeout(sugId);
-                                
-                                if (sugRes.ok) {
-                                    const sugJson = await sugRes.json();
-                                    if (sugJson && sugJson.data && sugJson.data.entries && sugJson.data.entries.length > 0) {
-                                        translation = sugJson.data.entries[0].explain;
-                                    }
-                                }
-                            }
-
-                            if (translation) {
-                                return {
-                                    source: 'online',
-                                    data: {
-                                        word: wordText,
-                                        phonetic: phonetic,
-                                        ukphone: ukphone,
-                                        usphone: usphone,
-                                        translation: translation
-                                    }
-                                };
-                            }
-                        }
-                    } catch (dictErr) {
-                        console.error("Youdao dict API failed:", dictErr);
-                        // Fall-through to translation APIs
+                        };
                     }
                 }
+            } catch (err) {
+                console.error("[Main] queryLLM error:", err);
+            }
+            return null;
+        }
+
+        async function queryEdgeTranslate(cleanWord) {
+            console.log(`[Main] Edge Translating: ${cleanWord}`);
+            try {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 4000);
+                const authRes = await fetch('https://edge.microsoft.com/translate/auth', { signal: controller.signal });
+                clearTimeout(id);
+                if (!authRes.ok) throw new Error(`Auth failed status: ${authRes.status}`);
+                const token = await authRes.text();
                 
-                // Final Fallback: Machine Translation for Phrases / Sentences
-                try {
-                    const gtController = new AbortController();
-                    const gtId = setTimeout(() => gtController.abort(), 6000);
-                    const gtRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(wordText)}`, { signal: gtController.signal });
-                    clearTimeout(gtId);
-                    
-                    if (gtRes.ok) {
-                        const gtJson = await gtRes.json();
-                        if (gtJson && gtJson[0] && gtJson[0].length > 0) {
-                            let fullTranslation = '';
-                            for (let segment of gtJson[0]) {
-                                if (segment[0]) fullTranslation += segment[0];
+                const translateController = new AbortController();
+                const translateId = setTimeout(() => translateController.abort(), 4000);
+                const res = await fetch('https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=zh-Hans', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify([{ Text: cleanWord }]),
+                    signal: translateController.signal
+                });
+                clearTimeout(translateId);
+                
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json[0] && json[0].translations && json[0].translations[0]) {
+                        return {
+                            source: 'edge',
+                            data: {
+                                word: cleanWord,
+                                phonetic: '',
+                                translation: json[0].translations[0].text
                             }
-                            
+                        };
+                    }
+                }
+                throw new Error(`Edge translate API status: ${res.status}`);
+            } catch (e) {
+                console.error("[Main] Edge translate failed:", e);
+                return null;
+            }
+        }
+
+        async function queryDeepLX(cleanWord, deeplxUrl) {
+            const url = deeplxUrl || 'https://deeplx.demo.tar.mil.pl/translate';
+            console.log(`[Main] DeepLX Translating: ${cleanWord} via ${url}`);
+            try {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 4000);
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: cleanWord,
+                        source_lang: "EN",
+                        target_lang: "ZH"
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                if (res.ok) {
+                    const json = await res.json();
+                    const translation = json.data || json.translation || (json.translations && json.translations[0]?.text);
+                    if (translation) {
+                        return {
+                            source: 'deeplx',
+                            data: {
+                                word: cleanWord,
+                                phonetic: '',
+                                translation: translation
+                            }
+                        };
+                    }
+                }
+                throw new Error(`DeepLX status: ${res.status}`);
+            } catch (e) {
+                console.error("[Main] DeepLX translation failed:", e);
+                return null;
+            }
+        }
+
+        async function queryGoogleTranslate(cleanWord) {
+            console.log(`[Main] Google Translating: ${cleanWord}`);
+            try {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 4000);
+                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(cleanWord)}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json[0] && json[0].length > 0) {
+                        let fullTranslation = '';
+                        for (let segment of json[0]) {
+                            if (segment[0]) fullTranslation += segment[0];
+                        }
+                        if (fullTranslation) {
                             return {
-                                source: 'translate',
+                                source: 'translate-google',
                                 data: {
-                                    word: wordText,
-                                    phonetic: 'Phrase/Sentence',
+                                    word: cleanWord,
+                                    phonetic: '',
                                     translation: fullTranslation
                                 }
                             };
                         }
                     }
-                } catch (gtErr) {
-                    console.error("Google Translate failed, falling back to MyMemory API", gtErr);
-                    // Network Degradation Fallback (Mainland China robust)
-                    try {
-                        const mmController = new AbortController();
-                        const mmId = setTimeout(() => mmController.abort(), 8000);
-                        const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(wordText)}&langpair=en|zh-CN`, { signal: mmController.signal });
-                        clearTimeout(mmId);
-                        
-                        if (mmRes.ok) {
-                            const mmJson = await mmRes.json();
-                            if (mmJson && mmJson.responseData && mmJson.responseData.translatedText) {
-                                return {
-                                    source: 'translate-fallback',
-                                    data: {
-                                        word: wordText,
-                                        phonetic: 'Fallback Engine',
-                                        translation: mmJson.responseData.translatedText
-                                    }
-                                };
-                            }
-                        }
-                    } catch (mmErr) {
-                        console.error("Fallback engine also failed", mmErr);
+                }
+                throw new Error(`Google Translate status: ${res.status}`);
+            } catch (e) {
+                console.error("[Main] Google translate failed:", e);
+                return null;
+            }
+        }
+
+        async function queryFreeEngine(cleanWord, config) {
+            const engine = config.freeEngine || 'edge';
+            let result = null;
+
+            if (engine === 'edge') {
+                result = await queryEdgeTranslate(cleanWord);
+            } else if (engine === 'deeplx') {
+                result = await queryDeepLX(cleanWord, config.deeplxUrl);
+            } else if (engine === 'google') {
+                result = await queryGoogleTranslate(cleanWord);
+            }
+
+            if (result) return result;
+
+            // Fallback chain if preferred engine failed
+            console.log(`[Main] Preferred free engine (${engine}) failed, trying fallback Edge translator...`);
+            if (engine !== 'edge') {
+                result = await queryEdgeTranslate(cleanWord);
+                if (result) return result;
+            }
+            
+            console.log(`[Main] Fallback to Google Translate...`);
+            if (engine !== 'google') {
+                result = await queryGoogleTranslate(cleanWord);
+                if (result) return result;
+            }
+
+            return null;
+        }
+
+        async function fetchPhoneticsInBackground(cleanWord, sender) {
+            try {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 2000);
+                const res = await fetch(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(cleanWord)}`, { signal: controller.signal });
+                clearTimeout(id);
+                if (res.ok) {
+                    const json = await res.json();
+                    let phonetic = '';
+                    let ukphone = '';
+                    let usphone = '';
+                    if (json.ec && json.ec.word && json.ec.word[0]) {
+                        const wordObj = json.ec.word[0];
+                        ukphone = wordObj.ukphone || '';
+                        usphone = wordObj.usphone || '';
+                        phonetic = usphone || ukphone || '';
+                    } else if (json.ce && json.ce.word && json.ce.word[0]) {
+                        const wordObj = json.ce.word[0];
+                        phonetic = wordObj.phone || '';
+                    }
+                    if (ukphone || usphone || phonetic) {
+                        sender.send('update-phonetics', {
+                            word: cleanWord,
+                            ukphone,
+                            usphone,
+                            phonetic
+                        });
                     }
                 }
-            } catch (err) {
-                console.error("Online lookup failed completely", err);
+            } catch (e) {
+                console.error("[Main] Background phonetic fetch failed:", e);
+            }
+        }
+
+        ipcMain.handle('search-word', async (event, wordText) => {
+
+            console.log(`[Main] searching for: ${wordText}`);
+            if (!wordText) return { error: 'Empty query' };
+
+            let cleanWord = wordText.trim();
+            cleanWord = cleanWord.replace(/^[^a-zA-Z0-9\u4e00-\u9fa5]+|[^a-zA-Z0-9\u4e00-\u9fa5]+$/g, '');
+            if (!cleanWord) return { error: 'Empty query' };
+            console.log(`[Main] cleaned query: ${cleanWord}`);
+
+            // Check Local DB first
+            let stmt = db.prepare('SELECT * FROM words WHERE word = ? COLLATE NOCASE');
+            let result = stmt.get(cleanWord);
+            
+            if (result) return { source: 'local', data: result };
+
+            // Prioritize LLM translation if enabled and API key is set
+            const config = syncEngine.getConfig(app) || {};
+            if (config.llmEnabled && config.llmKey) {
+                console.log(`[Main] Prioritizing LLM translation for: ${cleanWord}`);
+                const llmResult = await queryLLM(cleanWord, config);
+                if (llmResult) {
+                    return llmResult;
+                }
+                console.log(`[Main] LLM translation failed or timed out, falling back to local/online dictionaries`);
+            }
+
+            // Fallback to ECDICT
+            if (ecdictDb) {
+                stmt = ecdictDb.prepare('SELECT * FROM stardict WHERE word = ? COLLATE NOCASE');
+                result = stmt.get(cleanWord);
+                if (result) return { source: 'ecdict', data: result };
+            }
+
+            const isPhrase = cleanWord.includes(' ');
+
+            // Prioritize high-speed racing suggestions for single words before trying heavy/slower translation engines
+            if (!isPhrase) {
+                try {
+                    const racingResult = await Promise.any([
+                        // 1. Youdao Suggest API
+                        (async () => {
+                            const controller = new AbortController();
+                            const id = setTimeout(() => controller.abort(), 1500);
+                            const res = await fetch(`https://dict.youdao.com/suggest?num=1&ver=3.0&doctype=json&cache=false&le=en&q=${encodeURIComponent(cleanWord)}`, { signal: controller.signal });
+                            clearTimeout(id);
+                            if (res.ok) {
+                                const sugJson = await res.json();
+                                if (sugJson && sugJson.data && sugJson.data.entries && sugJson.data.entries.length > 0) {
+                                    const explain = sugJson.data.entries[0].explain;
+                                    if (explain) {
+                                        return {
+                                            source: 'youdao-suggest',
+                                            data: {
+                                                word: cleanWord,
+                                                phonetic: '',
+                                                translation: explain
+                                            }
+                                        };
+                                    }
+                                }
+                            }
+                            throw new Error("Youdao Suggest failed");
+                        })(),
+                        // 2. Baidu Suggestion API
+                        (async () => {
+                            const controller = new AbortController();
+                            const id = setTimeout(() => controller.abort(), 1500);
+                            const res = await fetch(`https://fanyi.baidu.com/sug`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                                },
+                                  body: 'kw=' + encodeURIComponent(cleanWord),
+                                signal: controller.signal
+                            });
+                            clearTimeout(id);
+                            if (res.ok) {
+                                const json = await res.json();
+                                if (json && json.data && json.data.length > 0) {
+                                    const translation = json.data.map(item => item.v).join('\n');
+                                    if (translation) {
+                                        return {
+                                            source: 'baidu-suggest',
+                                            data: {
+                                                word: cleanWord,
+                                                phonetic: '',
+                                                translation: translation
+                                            }
+                                        };
+                                    }
+                                }
+                            }
+                            throw new Error("Baidu Suggest failed");
+                        })()
+                    ]);
+                    if (racingResult) {
+                        fetchPhoneticsInBackground(cleanWord, event.sender);
+                        return racingResult;
+                    }
+                } catch (wordErr) {
+                    console.log("[Main] Racing Suggestion APIs failed or timed out, trying full/translation engines...");
+                }
+            }
+
+            // Query preferred free translation engine (Edge / DeepLX / Google)
+            const freeResult = await queryFreeEngine(cleanWord, config);
+            if (freeResult) return freeResult;
+
+            if (!isPhrase) {      // Try Youdao full JSONAPI (longer details like phonetics) with a shorter 2s timeout
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 2000);
+                    const res = await fetch(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(cleanWord)}`, { signal: controller.signal });
+                    clearTimeout(id);
+                    
+                    if (res.ok) {
+                        const json = await res.json();
+                        let translation = '';
+                        let phonetic = '';
+                        let ukphone = '';
+                        let usphone = '';
+                        
+                        if (json.ec && json.ec.word && json.ec.word[0]) {
+                            const wordObj = json.ec.word[0];
+                            ukphone = wordObj.ukphone || '';
+                            usphone = wordObj.usphone || '';
+                            phonetic = usphone || ukphone || '';
+                            if (wordObj.trs && wordObj.trs.length > 0) {
+                                translation = wordObj.trs.map(t => {
+                                    const i = t.tr?.[0]?.l?.i;
+                                    return Array.isArray(i) ? i.join('\n') : (i || '');
+                                }).filter(Boolean).join('\n');
+                            }
+                        } else if (json.ce && json.ce.word && json.ce.word[0]) {
+                            const wordObj = json.ce.word[0];
+                            phonetic = wordObj.phone || '';
+                            if (wordObj.trs && wordObj.trs.length > 0) {
+                                translation = wordObj.trs.map(t => {
+                                    const i = t.tr?.[0]?.l?.i;
+                                    return Array.isArray(i) ? i.join('\n') : (i || '');
+                                }).filter(Boolean).join('\n');
+                            }
+                        }
+                        
+                        if (!translation && json.web_trans && json.web_trans['web-translation']) {
+                            const webTrans = json.web_trans['web-translation'][0]?.trans;
+                            if (webTrans) translation = webTrans.map(t => t.value).join(', ');
+                        }
+
+                        if (translation) {
+                            return {
+                                source: 'online-youdao',
+                                data: {
+                                    word: cleanWord,
+                                    phonetic: phonetic,
+                                    ukphone: ukphone,
+                                    usphone: usphone,
+                                    translation: translation
+                                }
+                            };
+                        }
+                    }
+                } catch (dictErr) {
+                    console.error("Youdao JSONAPI failed:", dictErr);
+                }
+            }
+            
+            // Final Fallback (for phrases or when suggestion/JSONAPI failed): Google Translate / MyMemory
+            try {
+                const gtController = new AbortController();
+                const gtId = setTimeout(() => gtController.abort(), 2500); // 2.5s timeout for Google Translate
+                const gtRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(cleanWord)}`, { signal: gtController.signal });
+                clearTimeout(gtId);
+                
+                if (gtRes.ok) {
+                    const gtJson = await gtRes.json();
+                    if (gtJson && gtJson[0] && gtJson[0].length > 0) {
+                        let fullTranslation = '';
+                        for (let segment of gtJson[0]) {
+                            if (segment[0]) fullTranslation += segment[0];
+                        }
+                        
+                        return {
+                            source: 'translate-google',
+                            data: {
+                                word: cleanWord,
+                                phonetic: '',
+                                translation: fullTranslation
+                            }
+                        };
+                    }
+                }
+            } catch (gtErr) {
+                console.error("Google Translate failed, falling back to MyMemory API", gtErr);
+                try {
+                    const mmController = new AbortController();
+                    const mmId = setTimeout(() => mmController.abort(), 3000); // 3s timeout for MyMemory
+                    const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanWord)}&langpair=en|zh-CN`, { signal: mmController.signal });
+                    clearTimeout(mmId);
+                    
+                    if (mmRes.ok) {
+                        const mmJson = await mmRes.json();
+                        if (mmJson && mmJson.responseData && mmJson.responseData.translatedText) {
+                            return {
+                                source: 'translate-mymemory',
+                                data: {
+                                    word: cleanWord,
+                                    phonetic: '',
+                                    translation: mmJson.responseData.translatedText
+                                }
+                            };
+                        }
+                    }
+                } catch (mmErr) {
+                    console.error("MyMemory fallback engine also failed", mmErr);
+                }
             }
 
             return { error: 'Not found in any database' };
         });
+
 
         ipcMain.handle('save-word', async (event, wordData) => {
             // Save to local SQLite
@@ -443,6 +980,159 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 flashcardWindow.setPosition(pos[0] + dx, pos[1] + dy);
             }
         });
+
+        ipcMain.on('toggle-dock', () => {
+            if (!flashcardWindow || flashcardWindow.isDestroyed()) return;
+
+            if (!isFlashcardDocked) {
+                // Docking
+                preDockBounds = flashcardWindow.getBounds();
+                
+                const { screen } = require('electron');
+                const display = screen.getDisplayMatching(preDockBounds);
+                const workArea = display.workArea;
+                
+                const windowCenterX = preDockBounds.x + preDockBounds.width / 2;
+                const distanceToLeft = Math.abs(windowCenterX - workArea.x);
+                const distanceToRight = Math.abs(windowCenterX - (workArea.x + workArea.width));
+                
+                let newX;
+                if (distanceToLeft < distanceToRight) {
+                    dockSide = 'left';
+                    newX = workArea.x;
+                } else {
+                    dockSide = 'right';
+                    newX = workArea.x + workArea.width - 45; // 45px collapsed width
+                }
+                
+                isFlashcardDocked = true;
+                
+                let newY = preDockBounds.y;
+                if (newY < workArea.y) newY = workArea.y;
+                if (newY + 45 > workArea.y + workArea.height) {
+                    newY = workArea.y + workArea.height - 45;
+                }
+                
+                flashcardWindow.setBounds({
+                    x: newX,
+                    y: newY,
+                    width: 45,
+                    height: 45
+                });
+                
+                // Disable native window materials for transparency in corners
+                if (typeof flashcardWindow.setBackgroundMaterial === 'function') {
+                    flashcardWindow.setBackgroundMaterial('none');
+                }
+                if (typeof flashcardWindow.setVibrancy === 'function') {
+                    flashcardWindow.setVibrancy(null);
+                }
+                
+                flashcardWindow.webContents.send('dock-state-changed', true, dockSide);
+            } else {
+                // Undocking
+                isFlashcardDocked = false;
+                
+                const restoredWidth = 340;
+                const restoredHeight = 200;
+                
+                let newX;
+                if (preDockBounds) {
+                    if (dockSide === 'right') {
+                        const currentBounds = flashcardWindow.getBounds();
+                        newX = currentBounds.x + currentBounds.width - restoredWidth;
+                    } else {
+                        newX = flashcardWindow.getBounds().x;
+                    }
+                    
+                    const { screen } = require('electron');
+                    const display = screen.getDisplayMatching({ x: newX, y: preDockBounds.y, width: restoredWidth, height: restoredHeight });
+                    const workArea = display.workArea;
+                    
+                    if (newX < workArea.x) newX = workArea.x;
+                    if (newX + restoredWidth > workArea.x + workArea.width) {
+                        newX = workArea.x + workArea.width - restoredWidth;
+                    }
+                    
+                    let newY = preDockBounds.y;
+                    if (newY < workArea.y) newY = workArea.y;
+                    if (newY + restoredHeight > workArea.y + workArea.height) {
+                        newY = workArea.y + workArea.height - restoredHeight;
+                    }
+                    
+                    flashcardWindow.setBounds({
+                        x: newX,
+                        y: newY,
+                        width: restoredWidth,
+                        height: restoredHeight
+                    });
+                } else {
+                    const { screen } = require('electron');
+                    const primaryDisplay = screen.getPrimaryDisplay();
+                    const { width, height } = primaryDisplay.workAreaSize;
+                    flashcardWindow.setBounds({
+                        x: width - 360,
+                        y: height - 200,
+                        width: restoredWidth,
+                        height: restoredHeight
+                    });
+                }
+                
+                // Restore native window materials
+                if (typeof flashcardWindow.setBackgroundMaterial === 'function') {
+                    flashcardWindow.setBackgroundMaterial('acrylic');
+                }
+                if (typeof flashcardWindow.setVibrancy === 'function') {
+                    flashcardWindow.setVibrancy('popover');
+                }
+                
+                flashcardWindow.webContents.send('dock-state-changed', false, dockSide);
+            }
+        });
+
+
+        ipcMain.on('snap-to-edge', () => {
+            if (!flashcardWindow || flashcardWindow.isDestroyed() || !isFlashcardDocked) return;
+            
+            const currentBounds = flashcardWindow.getBounds();
+            const { screen } = require('electron');
+            const display = screen.getDisplayMatching(currentBounds);
+            const workArea = display.workArea;
+            
+            const windowCenterX = currentBounds.x + currentBounds.width / 2;
+            const distanceToLeft = Math.abs(windowCenterX - workArea.x);
+            const distanceToRight = Math.abs(windowCenterX - (workArea.x + workArea.width));
+            
+            let newX;
+            if (distanceToLeft < distanceToRight) {
+                dockSide = 'left';
+                newX = workArea.x;
+            } else {
+                dockSide = 'right';
+                newX = workArea.x + workArea.width - 45;
+            }
+            
+            let newY = currentBounds.y;
+            if (newY < workArea.y) newY = workArea.y;
+            if (newY + 45 > workArea.y + workArea.height) {
+                newY = workArea.y + workArea.height - 45;
+            }
+            
+            flashcardWindow.setBounds({
+                x: newX,
+                y: newY,
+                width: 45,
+                height: 45
+            });
+            
+            // Update preDockBounds so when they undock, it restores to this height!
+            if (preDockBounds) {
+                preDockBounds.y = newY;
+            }
+            
+            flashcardWindow.webContents.send('dock-state-changed', true, dockSide);
+        });
+
 
         // Elite Feature: Dynamic Mouse Pass-through
         ipcMain.on('set-ignore-mouse', (event, ignore, options) => {
@@ -519,6 +1209,151 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             return syncEngine.getConfig(app) || {};
         });
 
+        ipcMain.handle('set-llm-config', (event, llmConfig) => {
+            const currentCfg = syncEngine.getConfig(app) || {};
+            currentCfg.llmEnabled = llmConfig.llmEnabled;
+            currentCfg.llmProvider = llmConfig.llmProvider;
+            currentCfg.llmUrl = llmConfig.llmUrl;
+            currentCfg.llmKey = llmConfig.llmKey;
+            currentCfg.llmModel = llmConfig.llmModel;
+            syncEngine.setConfig(app, currentCfg);
+            return true;
+        });
+
+        ipcMain.handle('set-free-engine-config', (event, freeConfig) => {
+            const currentCfg = syncEngine.getConfig(app) || {};
+            currentCfg.freeEngine = freeConfig.freeEngine;
+            currentCfg.deeplxUrl = freeConfig.deeplxUrl;
+            syncEngine.setConfig(app, currentCfg);
+            return true;
+        });
+
+        ipcMain.handle('set-screenshot-config', (event, screenshotConfig) => {
+            const currentCfg = syncEngine.getConfig(app) || {};
+            const oldScreenshotShortcut = currentCfg.screenshotShortcut;
+            
+            if (screenshotConfig.hasOwnProperty('screenshotShortcut')) {
+                currentCfg.screenshotShortcut = screenshotConfig.screenshotShortcut;
+            }
+            if (screenshotConfig.hasOwnProperty('ocrEngine')) {
+                currentCfg.ocrEngine = screenshotConfig.ocrEngine;
+            }
+            if (screenshotConfig.hasOwnProperty('ocrApiKey')) {
+                currentCfg.ocrApiKey = screenshotConfig.ocrApiKey;
+            }
+            if (screenshotConfig.hasOwnProperty('youdaoOcrAppKey')) {
+                currentCfg.youdaoOcrAppKey = screenshotConfig.youdaoOcrAppKey;
+            }
+            if (screenshotConfig.hasOwnProperty('youdaoOcrSecretKey')) {
+                currentCfg.youdaoOcrSecretKey = screenshotConfig.youdaoOcrSecretKey;
+            }
+            if (screenshotConfig.hasOwnProperty('ocrLang')) {
+                currentCfg.ocrLang = screenshotConfig.ocrLang;
+            }
+            syncEngine.setConfig(app, currentCfg);
+            
+            const result = setupGlobalShortcuts();
+            
+            // Check screenshotOk if screenshotShortcut was explicitly changed/provided
+            if (screenshotConfig.hasOwnProperty('screenshotShortcut') && !result.screenshotOk) {
+                console.error("Failed to register new screenshot shortcut, restoring old:", screenshotConfig.screenshotShortcut);
+                currentCfg.screenshotShortcut = oldScreenshotShortcut;
+                syncEngine.setConfig(app, currentCfg);
+                setupGlobalShortcuts();
+                return { success: false, error: 'Shortcut already in use or invalid' };
+            }
+            
+            return { success: true };
+        });
+
+        ipcMain.on('trigger-screenshot', () => {
+            triggerScreenshotTranslation();
+        });
+
+        ipcMain.handle('get-screenshot-image', () => {
+            return lastScreenshotDataUrl;
+        });
+
+        ipcMain.on('close-screenshot', () => {
+            if (screenshotWindow) {
+                screenshotWindow.close();
+            }
+            if (inputWindow) {
+                inputWindow.show();
+                inputWindow.focus();
+            }
+        });
+
+        ipcMain.handle('complete-screenshot', async (event, croppedBase64) => {
+            if (screenshotWindow) {
+                screenshotWindow.close();
+            }
+            
+            if (inputWindow) {
+                inputWindow.show();
+                inputWindow.focus();
+                inputWindow.webContents.send('screenshot-ocr-start');
+            }
+
+            const config = syncEngine.getConfig(app) || {};
+            try {
+                const recognizedText = await performOCR(croppedBase64, config);
+                if (inputWindow) {
+                    inputWindow.webContents.send('screenshot-ocr-success', recognizedText);
+                }
+                return { success: true };
+            } catch (err) {
+                if (inputWindow) {
+                    inputWindow.webContents.send('screenshot-ocr-error', err.message || err);
+                }
+                return { success: false, error: err.message || err };
+            }
+        });
+
+
+
+        ipcMain.handle('test-llm-connection', async (event, llmConfig) => {
+            const { llmProvider, llmUrl, llmKey, llmModel } = llmConfig;
+            if (!llmKey) return { success: false, error: 'API Key cannot be empty.' };
+            
+            const baseUrl = (llmUrl || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+            const url = `${baseUrl}/chat/completions`;
+            
+            const payload = {
+                model: llmModel || 'deepseek-chat',
+                messages: [
+                    { role: 'user', content: 'Say OK' }
+                ],
+                max_tokens: 10
+            };
+
+            try {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 6000); // 6s timeout for testing
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${llmKey}`
+                    },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.choices && json.choices[0]) {
+                        return { success: true };
+                    }
+                }
+                const text = await res.text();
+                return { success: false, error: `HTTP ${res.status}: ${text.substring(0, 150)}` };
+            } catch (err) {
+                return { success: false, error: err.message };
+            }
+        });
+
+
         ipcMain.handle('select-sync-folder', async () => {
             const result = await dialog.showOpenDialog({
                 properties: ['openDirectory']
@@ -541,13 +1376,21 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         });
         
         ipcMain.handle('set-shortcut', (event, newShortcut) => {
-            if (setupShortcut(newShortcut)) {
-                const currentCfg = syncEngine.getConfig(app) || {};
-                currentCfg.shortcut = newShortcut;
-                syncEngine.setConfig(app, currentCfg);
+            const currentCfg = syncEngine.getConfig(app) || {};
+            const oldShortcut = currentCfg.shortcut;
+            currentCfg.shortcut = newShortcut;
+            syncEngine.setConfig(app, currentCfg);
+            
+            const result = setupGlobalShortcuts();
+            if (result.searchOk) {
                 return { success: true };
+            } else {
+                console.error("Failed to register search shortcut, restoring old:", newShortcut);
+                currentCfg.shortcut = oldShortcut;
+                syncEngine.setConfig(app, currentCfg);
+                setupGlobalShortcuts();
+                return { error: 'Invalid shortcut combination' };
             }
-            return { error: 'Invalid shortcut combination' };
         });
 
         // Autostart setup

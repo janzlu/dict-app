@@ -30,8 +30,12 @@ test.describe('Lumina Electron UI Tests', () => {
     });
 
     test('Spotlight window is initialized with correct UI elements', async () => {
-        // Get the first window that Lumina creates (which is the hidden inputWindow / Spotlight)
-        const window = await electronApp.firstWindow();
+        // Get the Spotlight window (which loaded index.html)
+        const windows = electronApp.windows();
+        let window = windows.find(w => w.url().includes('index.html'));
+        if (!window) {
+            window = await electronApp.firstWindow();
+        }
         
         // Wait for DOM content to finish loading
         await window.waitForLoadState('domcontentloaded');

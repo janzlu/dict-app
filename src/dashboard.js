@@ -51,8 +51,34 @@ const locales = {
         btn_download_update: "Download Update",
         btn_install_update: "Install & Relaunch",
         label_autopopup: "Clipboard Auto-Pop",
-        desc_autopopup: "Automatically show Spotlight when a short English text is copied"
+        desc_autopopup: "Automatically show Spotlight when a short English text is copied",
+        title_llm_settings: "AI Translation Engine Settings",
+        desc_llm_settings: "Configure your custom Large Language Model (e.g. DeepSeek, OpenAI) for contextual, high-precision translation.",
+        label_llm_enabled: "Enable AI Translation",
+        desc_llm_enabled: "Prioritize LLM for translation when enabled and API key is set",
+        label_llm_provider: "AI Provider",
+        label_llm_url: "API Base URL",
+        label_llm_key: "API Key",
+        label_llm_model: "Model Name",
+        btn_save_llm: "Save AI Settings",
+        btn_test_llm: "Test Connection",
+        label_free_engine: "Free Translation Engine",
+        engine_edge: "Microsoft Edge Translate (Domestic Optimized)",
+        engine_deeplx: "DeepLX Translate (High-Speed Mirror / Self-hosted)",
+        engine_google: "Google Translate (GTX API)",
+        label_deeplx_url: "DeepLX API Endpoint URL",
+        title_screenshot_settings: "Screenshot Translation Settings",
+        desc_screenshot_settings: "Configure your global screenshot shortcut, OCR engines, and API keys.",
+        label_screenshot_shortcut: "Screenshot Global Shortcut",
+        btn_save_screenshot_shortcut: "Save Shortcut",
+        label_ocr_engine: "OCR Engine",
+        label_ocr_key: "OCR.space API Key (Optional)",
+        label_youdao_ocr_app_key: "Youdao OCR App Key",
+        label_youdao_ocr_secret_key: "Youdao OCR Secret Key",
+        label_ocr_lang: "OCR Default Language",
+        btn_save_screenshot_settings: "Save Screenshot & OCR Settings"
     },
+
     zh: {
         title_dashboard: "控制台 - 识光",
         logo: "识光",
@@ -65,7 +91,7 @@ const locales = {
         th_next_review: "下次复习",
         th_action: "操作",
         title_settings: "免服务无感跨端同步",
-        desc_settings: "请指定你云盘的某个专用文件夹（如 OneDrive等），后台便会静默将你的背诵进度和词库进行多设备双向极速合并同步。",
+        desc_settings: "请指定你云盘的某个专用文件夹（如 OneDrive等），后台便会静默将你的背诵进度 and 词库进行多设备双向极速合并同步。",
         label_shortcut: "聚合查词全域快捷键",
         hint_shortcut: "修饰键: Command, Control, Alt, Shift。例如: Alt+Space",
         btn_save_shortcut: "应用快捷键配置",
@@ -90,8 +116,35 @@ const locales = {
         btn_download_update: "高速下载更新包",
         btn_install_update: "立即安装并重启",
         label_autopopup: "划词复制唤起",
-        desc_autopopup: "默认开启。当您按下复制键提取短语文本时，将零延迟触发弹出大面板进行光速查词"
+        desc_autopopup: "默认开启。当您按下复制键提取短语文本时，将零延迟触发弹出大面板进行光速查词",
+        title_llm_settings: "AI 智能大模型翻译引擎",
+        desc_llm_settings: "配置自定义大模型（如 DeepSeek、OpenAI）以获得最具上下文感知、极高精度的查词与句子翻译体验。",
+        label_llm_enabled: "启用 AI 智能翻译",
+        desc_llm_enabled: "开启后，若配置了 API Key，系统查词和整句翻译将优先使用大模型",
+        label_llm_provider: "大模型云服务商",
+        label_llm_url: "API 接口 Base URL",
+        label_llm_key: "API Key / 密钥",
+        label_llm_model: "模型名称 (Model)",
+        btn_save_llm: "保存 AI 引擎配置",
+        btn_test_llm: "测试 API 联通性",
+        label_free_engine: "免 Key 优化翻译线路",
+        engine_edge: "微软 Edge 翻译 (国内直连、延迟极低)",
+        engine_deeplx: "DeepLX 翻译 (极高品质、支持自建)",
+        engine_google: "谷歌翻译 (经典 GTX 引擎)",
+        label_deeplx_url: "DeepLX 自定义接口 URL",
+        title_screenshot_settings: "截图翻译功能配置",
+        desc_screenshot_settings: "在此配置全域截图翻译的快捷键、OCR 文本识别引擎及开发者授权密钥。",
+        label_screenshot_shortcut: "全域区域截图翻译快捷键",
+        btn_save_screenshot_shortcut: "应用快捷键配置",
+        label_ocr_engine: "OCR 识别引擎",
+        label_ocr_key: "OCR.space API Key (可选)",
+        label_youdao_ocr_app_key: "有道 OCR 接口 App Key",
+        label_youdao_ocr_secret_key: "有道 OCR 接口 Secret Key",
+        label_ocr_lang: "OCR 默认识别目标语言",
+        btn_save_screenshot_settings: "保存截图与 OCR 配置"
     }
+
+
 };
 
 // Auto-detect system language optimally on first run
@@ -324,7 +377,63 @@ async function loadSyncConfig() {
         const themeSelect = document.getElementById('themeSelect');
         if (themeSelect) themeSelect.value = theme;
     }
+
+    // Load AI / LLM translation configs
+    if (config) {
+        const llmEnabledCheckbox = document.getElementById('llmEnabledCheckbox');
+        const llmProviderSelect = document.getElementById('llmProviderSelect');
+        const llmUrlInput = document.getElementById('llmUrlInput');
+        const llmKeyInput = document.getElementById('llmKeyInput');
+        const llmModelInput = document.getElementById('llmModelInput');
+
+        if (llmEnabledCheckbox) llmEnabledCheckbox.checked = !!config.llmEnabled;
+        if (llmProviderSelect) llmProviderSelect.value = config.llmProvider || 'deepseek';
+        if (llmUrlInput) {
+            llmUrlInput.value = config.llmUrl || '';
+            llmUrlInput.placeholder = (config.llmProvider === 'openai') ? 'e.g. https://api.openai.com/v1' : 'e.g. https://api.deepseek.com/v1';
+        }
+        if (llmKeyInput) llmKeyInput.value = config.llmKey || '';
+        if (llmModelInput) {
+            llmModelInput.value = config.llmModel || '';
+            llmModelInput.placeholder = (config.llmProvider === 'openai') ? 'e.g. gpt-4o-mini' : 'e.g. deepseek-chat';
+        }
+
+        // Load Free Translation Engine Config
+        const freeEngineSelect = document.getElementById('freeEngineSelect');
+        const deeplxUrlInput = document.getElementById('deeplxUrlInput');
+        const deeplxUrlGroup = document.getElementById('deeplxUrlGroup');
+
+        if (freeEngineSelect) {
+            freeEngineSelect.value = config.freeEngine || 'edge';
+            if (deeplxUrlGroup) {
+                deeplxUrlGroup.style.display = (freeEngineSelect.value === 'deeplx') ? 'block' : 'none';
+            }
+        }
+        if (deeplxUrlInput) {
+            deeplxUrlInput.value = config.deeplxUrl || 'https://deeplx.demo.tar.mil.pl/translate';
+        }
+
+        // Load Screenshot translation config
+        const ssShortcutInput = document.getElementById('screenshotShortcutInput');
+        const ocrEngineSelect = document.getElementById('ocrEngineSelect');
+        const ocrKeyInput = document.getElementById('ocrKeyInput');
+        const youdaoOcrAppKeyInput = document.getElementById('youdaoOcrAppKeyInput');
+        const youdaoOcrSecretKeyInput = document.getElementById('youdaoOcrSecretKeyInput');
+        const ocrLangSelect = document.getElementById('ocrLangSelect');
+
+        if (ssShortcutInput) ssShortcutInput.value = config.screenshotShortcut || 'CommandOrControl+Shift+X';
+        if (ocrEngineSelect) {
+            ocrEngineSelect.value = config.ocrEngine || 'ocr_space';
+            toggleOcrInputs(ocrEngineSelect.value);
+        }
+        if (ocrKeyInput) ocrKeyInput.value = config.ocrApiKey || '';
+        if (youdaoOcrAppKeyInput) youdaoOcrAppKeyInput.value = config.youdaoOcrAppKey || '';
+        if (youdaoOcrSecretKeyInput) youdaoOcrSecretKeyInput.value = config.youdaoOcrSecretKey || '';
+        if (ocrLangSelect) ocrLangSelect.value = config.ocrLang || 'eng';
+    }
 }
+
+
 
 document.getElementById('autoStartCheckbox').addEventListener('change', async (e) => {
     if (window.api.setAutoStart) {
@@ -731,3 +840,240 @@ if (window.api.getVersion) {
         updateVersionText();
     });
 }
+
+// AI LLM Translation Controller Logic
+const llmProviderSelect = document.getElementById('llmProviderSelect');
+if (llmProviderSelect) {
+    llmProviderSelect.addEventListener('change', (e) => {
+        const provider = e.target.value;
+        const urlInput = document.getElementById('llmUrlInput');
+        const modelInput = document.getElementById('llmModelInput');
+        if (provider === 'deepseek') {
+            urlInput.placeholder = 'e.g. https://api.deepseek.com/v1';
+            urlInput.value = 'https://api.deepseek.com/v1';
+            modelInput.placeholder = 'e.g. deepseek-chat';
+            modelInput.value = 'deepseek-chat';
+        } else if (provider === 'openai') {
+            urlInput.placeholder = 'e.g. https://api.openai.com/v1';
+            urlInput.value = 'https://api.openai.com/v1';
+            modelInput.placeholder = 'e.g. gpt-4o-mini';
+            modelInput.value = 'gpt-4o-mini';
+        } else {
+            urlInput.placeholder = 'e.g. https://custom-endpoint/v1';
+            urlInput.value = '';
+            modelInput.placeholder = 'e.g. my-custom-model';
+            modelInput.value = '';
+        }
+    });
+}
+
+const btnSaveLlm = document.getElementById('btnSaveLlm');
+if (btnSaveLlm) {
+    btnSaveLlm.addEventListener('click', async () => {
+        const llmEnabled = document.getElementById('llmEnabledCheckbox').checked;
+        const llmProvider = document.getElementById('llmProviderSelect').value;
+        const llmUrl = document.getElementById('llmUrlInput').value.trim();
+        const llmKey = document.getElementById('llmKeyInput').value.trim();
+        const llmModel = document.getElementById('llmModelInput').value.trim();
+
+        if (window.api.setLlmConfig) {
+            await window.api.setLlmConfig({ llmEnabled, llmProvider, llmUrl, llmKey, llmModel });
+            const statusDiv = document.getElementById('llmTestStatus');
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+                statusDiv.style.color = '#00ffaa';
+                statusDiv.textContent = currentLang === 'zh' ? '✅ AI 配置保存成功！' : '✅ AI Settings saved successfully!';
+                setTimeout(() => { statusDiv.style.display = 'none'; }, 4000);
+            }
+        }
+    });
+}
+
+const btnTestLlm = document.getElementById('btnTestLlm');
+if (btnTestLlm) {
+    btnTestLlm.addEventListener('click', async () => {
+        const llmProvider = document.getElementById('llmProviderSelect').value;
+        const llmUrl = document.getElementById('llmUrlInput').value.trim();
+        const llmKey = document.getElementById('llmKeyInput').value.trim();
+        const llmModel = document.getElementById('llmModelInput').value.trim();
+        const statusDiv = document.getElementById('llmTestStatus');
+
+        if (!llmKey) {
+            statusDiv.style.display = 'block';
+            statusDiv.style.color = '#ff5555';
+            statusDiv.textContent = currentLang === 'zh' ? '❌ API Key 不能为空。' : '❌ API Key cannot be empty.';
+            return;
+        }
+
+        statusDiv.style.display = 'block';
+        statusDiv.style.color = 'var(--text-secondary)';
+        statusDiv.textContent = currentLang === 'zh' ? '⚡ 正在测试 API 联通性，请稍候...' : '⚡ Testing API connection, please wait...';
+
+        if (window.api.testLlmConnection) {
+            const res = await window.api.testLlmConnection({ llmProvider, llmUrl, llmKey, llmModel });
+            if (res.success) {
+                statusDiv.style.color = '#00ffaa';
+                statusDiv.textContent = currentLang === 'zh' ? '✅ 连接成功！API 正常响应。' : '✅ Connection successful! API responded successfully.';
+            } else {
+                statusDiv.style.color = '#ff5555';
+                statusDiv.textContent = (currentLang === 'zh' ? '❌ 连接失败：' : '❌ Connection failed: ') + res.error;
+            }
+        }
+    });
+}
+
+// Free Engine Settings Controller Logic
+const freeEngineSelect = document.getElementById('freeEngineSelect');
+const deeplxUrlInput = document.getElementById('deeplxUrlInput');
+const deeplxUrlGroup = document.getElementById('deeplxUrlGroup');
+
+async function saveFreeEngineConfig() {
+    if (window.api.setFreeEngineConfig) {
+        const freeEngine = freeEngineSelect.value;
+        const deeplxUrl = deeplxUrlInput.value.trim();
+        await window.api.setFreeEngineConfig({ freeEngine, deeplxUrl });
+    }
+}
+
+if (freeEngineSelect) {
+    freeEngineSelect.addEventListener('change', async (e) => {
+        const value = e.target.value;
+        if (deeplxUrlGroup) {
+            deeplxUrlGroup.style.display = (value === 'deeplx') ? 'block' : 'none';
+        }
+        await saveFreeEngineConfig();
+    });
+}
+
+if (deeplxUrlInput) {
+    deeplxUrlInput.addEventListener('change', async () => {
+        await saveFreeEngineConfig();
+    });
+    deeplxUrlInput.addEventListener('blur', async () => {
+        await saveFreeEngineConfig();
+    });
+}
+
+// Screenshot Settings Controller Logic
+const ocrEngineSelect = document.getElementById('ocrEngineSelect');
+if (ocrEngineSelect) {
+    ocrEngineSelect.addEventListener('change', (e) => {
+        toggleOcrInputs(e.target.value);
+    });
+}
+
+function toggleOcrInputs(engine) {
+    const ocrSpaceKeyGroup = document.getElementById('ocrSpaceKeyGroup');
+    const youdaoOcrAppKeyGroup = document.getElementById('youdaoOcrAppKeyGroup');
+    const youdaoOcrSecretKeyGroup = document.getElementById('youdaoOcrSecretKeyGroup');
+    
+    if (engine === 'youdao') {
+        if (ocrSpaceKeyGroup) ocrSpaceKeyGroup.style.display = 'none';
+        if (youdaoOcrAppKeyGroup) youdaoOcrAppKeyGroup.style.display = 'block';
+        if (youdaoOcrSecretKeyGroup) youdaoOcrSecretKeyGroup.style.display = 'block';
+    } else {
+        if (ocrSpaceKeyGroup) ocrSpaceKeyGroup.style.display = 'block';
+        if (youdaoOcrAppKeyGroup) youdaoOcrAppKeyGroup.style.display = 'none';
+        if (youdaoOcrSecretKeyGroup) youdaoOcrSecretKeyGroup.style.display = 'none';
+    }
+}
+
+const screenshotShortcutInput = document.getElementById('screenshotShortcutInput');
+if (screenshotShortcutInput) {
+    screenshotShortcutInput.addEventListener('keydown', (e) => {
+        e.preventDefault();
+        let keys = [];
+        if (e.ctrlKey || e.metaKey) keys.push('CommandOrControl');
+        if (e.altKey) keys.push('Alt');
+        if (e.shiftKey) keys.push('Shift');
+
+        const keyName = e.key;
+        const isModifierOnly = ['Control', 'Alt', 'Shift', 'Meta'].includes(keyName);
+        if (isModifierOnly) {
+            screenshotShortcutInput.value = keys.join('+') + '+...';
+            return;
+        }
+
+        let finalKey = keyName.toUpperCase();
+        if (finalKey === ' ') finalKey = 'Space';
+        keys.push(finalKey);
+        screenshotShortcutInput.value = keys.join('+');
+    });
+}
+
+const btnSaveScreenshotShortcut = document.getElementById('btnSaveScreenshotShortcut');
+if (btnSaveScreenshotShortcut) {
+    btnSaveScreenshotShortcut.addEventListener('click', async () => {
+        const newShortcut = screenshotShortcutInput.value.trim();
+        if (!newShortcut) return;
+        
+        const originalText = btnSaveScreenshotShortcut.textContent;
+        btnSaveScreenshotShortcut.textContent = "Saving...";
+        
+        if (window.api.setScreenshotConfig) {
+            try {
+                const res = await window.api.setScreenshotConfig({ screenshotShortcut: newShortcut });
+                if (res && res.success) {
+                    btnSaveScreenshotShortcut.textContent = "Saved!";
+                    btnSaveScreenshotShortcut.style.background = "#00d2ff";
+                    setTimeout(() => {
+                        btnSaveScreenshotShortcut.textContent = originalText;
+                        btnSaveScreenshotShortcut.style.background = "";
+                    }, 2000);
+                } else {
+                    const errMsg = res && res.error ? `\nError: ${res.error}` : "";
+                    alert((currentLang === 'zh' ? "无法注册快捷键。该组合键可能无效或已被其他程序占用。" : "Failed to register shortcut. The combination might be invalid or already in use by the OS.") + errMsg);
+                    btnSaveScreenshotShortcut.textContent = originalText;
+                }
+            } catch (err) {
+                console.error("IPC call failed:", err);
+                btnSaveScreenshotShortcut.textContent = originalText;
+            }
+        }
+    });
+}
+
+const btnSaveScreenshotSettings = document.getElementById('btnSaveScreenshotSettings');
+if (btnSaveScreenshotSettings) {
+    btnSaveScreenshotSettings.addEventListener('click', async () => {
+        const screenshotShortcut = screenshotShortcutInput.value.trim();
+        const ocrEngine = ocrEngineSelect.value;
+        const ocrApiKey = document.getElementById('ocrKeyInput').value.trim();
+        const youdaoOcrAppKey = document.getElementById('youdaoOcrAppKeyInput').value.trim();
+        const youdaoOcrSecretKey = document.getElementById('youdaoOcrSecretKeyInput').value.trim();
+        const ocrLang = document.getElementById('ocrLangSelect').value;
+        
+        const statusDiv = document.getElementById('screenshotTestStatus');
+        
+        if (window.api.setScreenshotConfig) {
+            try {
+                const res = await window.api.setScreenshotConfig({
+                    screenshotShortcut,
+                    ocrEngine,
+                    ocrApiKey,
+                    youdaoOcrAppKey,
+                    youdaoOcrSecretKey,
+                    ocrLang
+                });
+                
+                if (statusDiv) {
+                    statusDiv.style.display = 'block';
+                    if (res && res.success) {
+                        statusDiv.style.color = '#00ffaa';
+                        statusDiv.textContent = currentLang === 'zh' ? '✅ 截图 OCR 配置保存成功！' : '✅ Screenshot OCR Settings saved successfully!';
+                    } else {
+                        statusDiv.style.color = '#ff3366';
+                        const errMsg = res && res.error ? `: ${res.error}` : "";
+                        statusDiv.textContent = currentLang === 'zh' ? `❌ 保存失败：快捷键已被占用或无效${errMsg}` : `❌ Save failed: Shortcut already in use or invalid${errMsg}`;
+                    }
+                    setTimeout(() => { statusDiv.style.display = 'none'; }, 4000);
+                }
+            } catch (err) {
+                console.error("IPC call failed:", err);
+            }
+        }
+    });
+}
+
+
+

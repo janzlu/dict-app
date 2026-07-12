@@ -1,5 +1,9 @@
+html, body {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
 body {
-    background-color: transparent;
     font-family: 'Inter', sans-serif;
     color: white;
     margin: 0;
@@ -9,8 +13,8 @@ body {
 
 .flashcard {
     width: 320px;
-    height: 160px;
-    background: rgba(18, 18, 20, 0.6);
+    height: 180px;
+    background: rgba(18, 18, 20, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -23,6 +27,8 @@ body {
     box-sizing: border-box;
     cursor: pointer;
     transition: background 0.2s ease;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
 }
 
 .flashcard:hover {
@@ -31,11 +37,17 @@ body {
 }
 
 .word {
-    font-size: 24px;
+    font-size: 34px;
     font-weight: bold;
     color: #00d2ff;
     margin-bottom: 8px;
     text-align: center;
+}
+
+.success-word {
+    font-family: 'Caveat', cursive !important;
+    font-size: 42px !important;
+    color: #FEDC00 !important;
 }
 
 .phonetic {
@@ -47,8 +59,29 @@ body {
 .translation {
     font-size: 15px;
     text-align: center;
-    display: none; /* Hidden on front side */
+    display: none;
+    /* Hidden on front side */
     line-height: 1.4;
+    overflow-y: auto;
+    max-height: 88px;
+    width: 100%;
+}
+
+.translation::-webkit-scrollbar {
+    width: 4px;
+}
+
+.translation::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.translation::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.translation::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 /* Flipped State */
@@ -85,10 +118,22 @@ body {
     cursor: pointer;
     font-size: 12px;
 }
-.btn.forgot { background: rgba(255, 60, 60, 0.3); }
-.btn.hard { background: rgba(255, 160, 0, 0.3); }
-.btn.good { background: rgba(60, 255, 60, 0.3); }
-.btn.easy { background: rgba(60, 160, 255, 0.3); }
+
+.btn.forgot {
+    background: rgba(255, 60, 60, 0.3);
+}
+
+.btn.hard {
+    background: rgba(255, 160, 0, 0.3);
+}
+
+.btn.good {
+    background: rgba(60, 255, 60, 0.3);
+}
+
+.btn.easy {
+    background: rgba(60, 160, 255, 0.3);
+}
 
 .btn:hover {
     filter: brightness(1.2);
@@ -107,4 +152,129 @@ body {
     cursor: pointer;
     -webkit-app-region: no-drag;
 }
-.close-btn:hover { color: white; }
+
+.close-btn:hover {
+    color: white;
+}
+
+/* Docking Layout & Transitions */
+.dock-btn {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-size: 12px;
+    color: #a0a0a5;
+    background: none;
+    border: none;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.dock-btn:hover {
+    color: #00d2ff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dock-btn .docked-icon {
+    display: none;
+}
+
+/* Docked Window Styles */
+body.docked {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background: transparent !important;
+}
+
+body.docked .flashcard {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle, rgba(20, 30, 48, 0.95) 0%, rgba(12, 18, 28, 0.95) 100%);
+    border: 1.5px solid rgba(0, 210, 255, 0.5);
+    box-shadow: 0 0 4px rgba(0, 210, 255, 0.3),
+                inset 0 0 6px rgba(0, 210, 255, 0.15);
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.docked .flashcard:hover {
+    border-color: #00d2ff;
+    box-shadow: 0 0 8px rgba(0, 210, 255, 0.5),
+                inset 0 0 8px rgba(0, 210, 255, 0.3);
+    transform: scale(1.08);
+}
+
+body.docked .flashcard:active {
+    transform: scale(0.92);
+    box-shadow: 0 0 3px rgba(0, 210, 255, 0.3),
+                inset 0 0 4px rgba(0, 210, 255, 0.2);
+    transition: all 0.1s ease;
+}
+
+
+body.docked .sparkle-svg {
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body.docked .flashcard:hover .sparkle-svg {
+    transform: rotate(90deg);
+}
+
+body.docked .flashcard:active .sparkle-svg {
+    transform: rotate(135deg) scale(0.85);
+}
+
+body.docked .dock-btn {
+    position: static;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+body.docked .dock-btn .normal-icon {
+    display: none;
+}
+
+body.docked .dock-btn .docked-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: dockedPulse 2.5s infinite ease-in-out;
+}
+
+
+body.docked .word,
+body.docked .phonetic,
+body.docked .translation,
+body.docked .buttons,
+body.docked .close-btn {
+    display: none !important;
+}
+
+@keyframes dockedPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.08);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}

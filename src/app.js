@@ -53,10 +53,8 @@ searchInput.addEventListener('keydown', async (e) => {
 });
 
 searchInput.addEventListener('input', () => {
-    if (searchInput.value.trim() === '') {
-        resultArea.classList.remove('visible');
-        adjustHeight();
-    }
+    resultArea.classList.remove('visible');
+    adjustHeight();
 });
 
 // Hide instantly on Escape anywhere in the window
@@ -120,23 +118,23 @@ window.playAudio = function(event, word, type) {
 
 function showResult(data, definition, source = 'unknown') {
     const wordText = typeof data === 'string' ? data : data.word;
-    const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+    const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 6px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
 
     // Format speaker icon
     if (typeof data !== 'string' && (data.ukphone || data.usphone)) {
         let html = '';
         if (data.ukphone) {
-            html += `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}', 1)" title="UK Pronunciation">${speakerSVG}UK /${data.ukphone}/</span>`;
+            html += `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}', 1)" title="UK Pronunciation">UK /${data.ukphone}/ ${speakerSVG}</span>`;
         }
         if (data.usphone) {
             if (html !== '') html += '&nbsp;&nbsp;';
-            html += `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}', 2)" title="US Pronunciation">${speakerSVG}US /${data.usphone}/</span>`;
+            html += `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}', 2)" title="US Pronunciation">US /${data.usphone}/ ${speakerSVG}</span>`;
         }
         wordPhonetic.innerHTML = html;
     } else if (typeof data !== 'string' && data.phonetic) {
-        wordPhonetic.innerHTML = `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}')">${speakerSVG}/${data.phonetic}/</span>`;
+        wordPhonetic.innerHTML = `<span class="phonetic-btn" onclick="playAudio(event, '${wordText.replace(/'/g, "\\'")}')">/${data.phonetic}/ ${speakerSVG}</span>`;
     } else {
-        wordPhonetic.innerHTML = `<span class="phonetic-btn" onclick="playTTS('${wordText.replace(/'/g, "\\'")}')" style="font-size: 12px; opacity: 0.6">${speakerSVG}Click to speak</span>`;
+        wordPhonetic.innerHTML = `<span class="phonetic-btn" onclick="playTTS('${wordText.replace(/'/g, "\\'")}')" style="font-size: 12px; opacity: 0.6">Click to speak ${speakerSVG}</span>`;
     }
     wordPhonetic.style.display = 'inline-block';
     
@@ -187,7 +185,7 @@ window.addEventListener('focus', () => {
 
 // Auto-clipboard Search Feature
 let lastClipboardRaw = '';
-if (window.api.onClipboardData) {
+if (window.api.onClipboardData && !window.api.isTest) {
     window.api.onClipboardData((text) => {
         text = (text || '').trim();
         // Focus purely on words or paragraphs <= 3000 chars (aligned with main.js).
@@ -212,3 +210,97 @@ if (window.api.onClipboardData) {
 
 // Global visual reset on boot
 adjustHeight();
+
+if (window.api.onUpdatePhonetics) {
+    window.api.onUpdatePhonetics((data) => {
+        if (currentWord && currentWord.toLowerCase() === data.word.toLowerCase()) {
+            const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 6px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+            let html = '';
+            if (data.ukphone) {
+                html += `<span class="phonetic-btn" onclick="playAudio(event, '${data.word.replace(/'/g, "\\'")}', 1)" title="UK Pronunciation">UK /${data.ukphone}/ ${speakerSVG}</span>`;
+            }
+            if (data.usphone) {
+                if (html !== '') html += '&nbsp;&nbsp;';
+                html += `<span class="phonetic-btn" onclick="playAudio(event, '${data.word.replace(/'/g, "\\'")}', 2)" title="US Pronunciation">US /${data.usphone}/ ${speakerSVG}</span>`;
+            }
+            if (!html && data.phonetic) {
+                html = `<span class="phonetic-btn" onclick="playAudio(event, '${data.word.replace(/'/g, "\\'")}')">/${data.phonetic}/ ${speakerSVG}</span>`;
+            }
+            if (html) {
+                wordPhonetic.innerHTML = html;
+                
+                let combined = data.phonetic || '';
+                if (data.ukphone && data.usphone && data.ukphone !== data.usphone) {
+                    combined = `UK /${data.ukphone}/ US /${data.usphone}/`;
+                } else if (data.ukphone) {
+                    combined = `UK /${data.ukphone}/`;
+                } else if (data.usphone) {
+                    combined = `US /${data.usphone}/`;
+                } else if (combined && !combined.includes('/')) {
+                    combined = `/${combined}/`;
+                }
+                currentPhonetic = combined;
+            }
+        }
+    });
+}
+
+// Screenshot Button Trigger
+const screenshotBtn = document.getElementById('screenshotBtn');
+if (screenshotBtn) {
+    screenshotBtn.addEventListener('click', () => {
+        if (window.api.triggerScreenshot) {
+            window.api.triggerScreenshot();
+        }
+    });
+}
+
+// Screenshot OCR Event Observers
+if (window.api.onScreenshotOcrStart) {
+    window.api.onScreenshotOcrStart(() => {
+        searchInput.value = '正在识别截图中...';
+        searchInput.disabled = true;
+        
+        // Show progress overlay inside definition card
+        wordPhonetic.innerHTML = '';
+        wordDefinition.innerHTML = `
+            <div style="text-align: center; padding: 24px; color: var(--text-secondary);">
+                <svg class="spinner" viewBox="0 0 50 50" style="width: 28px; height: 28px; animation: spin 1s linear infinite; display: inline-block;">
+                    <circle cx="25" cy="25" r="20" fill="none" stroke="var(--accent-color)" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="80, 200" stroke-dashoffset="0"></circle>
+                </svg>
+                <div style="margin-top: 12px; font-size: 14px; font-weight: 500; letter-spacing: 0.5px;">正在提取选区文字...</div>
+            </div>
+        `;
+        resultArea.classList.add('visible');
+        if (saveWordBtn) saveWordBtn.style.display = 'none';
+        adjustHeight();
+    });
+}
+
+if (window.api.onScreenshotOcrSuccess) {
+    window.api.onScreenshotOcrSuccess((text) => {
+        searchInput.disabled = false;
+        searchInput.value = text;
+        performSearch(text);
+        searchInput.focus();
+        searchInput.select();
+    });
+}
+
+if (window.api.onScreenshotOcrError) {
+    window.api.onScreenshotOcrError((err) => {
+        searchInput.disabled = false;
+        searchInput.value = '';
+        
+        wordPhonetic.innerHTML = '';
+        wordDefinition.innerHTML = `
+            <div style="color: #ff5555; padding: 12px; border-radius: 6px; background: rgba(255, 85, 85, 0.1); border: 1px solid rgba(255, 85, 85, 0.2); font-size: 14px;">
+                <strong>OCR 识别失败:</strong> ${err || '未检测到文字或网络超时'}
+            </div>
+        `;
+        resultArea.classList.add('visible');
+        if (saveWordBtn) saveWordBtn.style.display = 'none';
+        adjustHeight();
+        searchInput.focus();
+    });
+}
