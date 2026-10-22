@@ -10,6 +10,29 @@ let currentWordData = null;
 let slideshowFlipTimer = null;
 let slideshowNextTimer = null;
 
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+if (phoneticBox) {
+    phoneticBox.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-audio-word]');
+        if (!target) return;
+        event.stopPropagation();
+        const word = target.dataset.audioWord;
+        const type = target.dataset.audioType;
+        if (word) {
+            window.playAudio(event, word, type ? Number(type) : undefined);
+        }
+    });
+}
+
 // The main process will send a word to review
 window.api.onReviewWord((wordData) => {
     currentWordData = wordData;
@@ -17,18 +40,18 @@ window.api.onReviewWord((wordData) => {
     wordBox.classList.remove('success-word');
     let displayPhonetic = wordData.phonetic || '';
     const speakerSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbc531" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 6px; margin-bottom: 2px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
-    const safeWord = wordData.word.replace(/'/g, "\\'");
+    const safeWordAttr = escapeHtml(wordData.word);
 
     const dualMatch = displayPhonetic.match(/(UK|英)\s*\/([^/]+)\/\s*(US|美)\s*\/([^/]+)\//);
     if (dualMatch) {
         phoneticBox.innerHTML = 
-            `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}', 1)">${dualMatch[1]} /${dualMatch[2]}/ ${speakerSVG}</span> &nbsp;&nbsp; ` +
-            `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}', 2)">${dualMatch[3]} /${dualMatch[4]}/ ${speakerSVG}</span>`;
+            `<span style="cursor: pointer;" data-audio-word="${safeWordAttr}" data-audio-type="1">${escapeHtml(dualMatch[1])} /${escapeHtml(dualMatch[2])}/ ${speakerSVG}</span> &nbsp;&nbsp; ` +
+            `<span style="cursor: pointer;" data-audio-word="${safeWordAttr}" data-audio-type="2">${escapeHtml(dualMatch[3])} /${escapeHtml(dualMatch[4])}/ ${speakerSVG}</span>`;
     } else if (displayPhonetic) {
         if (!displayPhonetic.includes('/')) displayPhonetic = `/${displayPhonetic}/`;
-        phoneticBox.innerHTML = `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}')">${displayPhonetic} ${speakerSVG}</span>`;
+        phoneticBox.innerHTML = `<span style="cursor: pointer;" data-audio-word="${safeWordAttr}">${escapeHtml(displayPhonetic)} ${speakerSVG}</span>`;
     } else {
-        phoneticBox.innerHTML = `<span style="cursor: pointer;" onclick="window.playAudio(event, '${safeWord}')">点击发音 ${speakerSVG}</span>`;
+        phoneticBox.innerHTML = `<span style="cursor: pointer;" data-audio-word="${safeWordAttr}">点击发音 ${speakerSVG}</span>`;
     }
     
     phoneticBox.style.cursor = 'default';

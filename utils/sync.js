@@ -1,20 +1,80 @@
 const fs = require('fs');
 const path = require('path');
 
+let configCache = null;
+let cachedConfigPath = null;
+let debounceTimer = null;
+
 // Store config in appData alongside DB
 function getConfigFile(app) {
     return path.join(app.getPath('userData'), 'sync_config.json');
 }
 
+function clearConfigCache() {
+    configCache = null;
+    cachedConfigPath = null;
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+}
+
 function getConfig(app) {
     const configFile = getConfigFile(app);
-    if (!fs.existsSync(configFile)) return null;
-    return JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    if (configCache !== null && cachedConfigPath === configFile) {
+        return { ...configCache };
+    }
+    if (!fs.existsSync(configFile)) {
+        configCache = null;
+        cachedConfigPath = configFile;
+        return null;
+    }
+    try {
+        const raw = fs.readFileSync(configFile, 'utf8');
+        if (!raw || !raw.trim()) {
+            configCache = null;
+            cachedConfigPath = configFile;
+            return null;
+        }
+        configCache = JSON.parse(raw);
+        cachedConfigPath = configFile;
+        return { ...configCache };
+    } catch (err) {
+        console.error('Failed to read or parse sync_config.json:', err);
+        return configCache ? { ...configCache } : null;
+    }
 }
 
 function setConfig(app, config) {
     const configFile = getConfigFile(app);
-    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    configCache = config ? { ...config } : {};
+    cachedConfigPath = configFile;
+    try {
+        fs.writeFileSync(configFile, JSON.stringify(configCache, null, 2), 'utf8');
+    } catch (err) {
+        console.error('Failed to write sync_config.json:', err);
+    }
+}
+
+function setConfigDebounced(app, config, delayMs = 300) {
+    const configFile = getConfigFile(app);
+    configCache = config ? { ...config } : {};
+    cachedConfigPath = configFile;
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        try {
+            fs.writeFileSync(configFile, JSON.stringify(configCache, null, 2), 'utf8');
+        } catch (err) {
+            console.error('Failed to write debounced sync_config.json:', err);
+        }
+    }, delayMs);
 }
 
 // Ensure the local SQLite database is fully exported to a single JSON mapping file in the sync directory.
@@ -39,9 +99,15 @@ function importDatabaseFromSync(db, syncPath) {
     if (!fs.existsSync(file)) return false;
     
     const raw = fs.readFileSync(file, 'utf8');
-    if(!raw) return false;
+    if (!raw || !raw.trim()) return false;
 
-    const dataMap = JSON.parse(raw);
+    let dataMap;
+    try {
+        dataMap = JSON.parse(raw);
+    } catch (err) {
+        console.error('Failed to parse dict_sync_data.json:', err);
+        return false;
+    }
     
     const getLocal = db.prepare('SELECT updated_at FROM words WHERE word = ?');
     const upsert = db.prepare(`
@@ -60,6 +126,7 @@ function importDatabaseFromSync(db, syncPath) {
     const executeSync = db.transaction((entries) => {
         for (const wordKey in entries) {
             const remote = entries[wordKey];
+            if (!remote || !remote.word) continue;
             const local = getLocal.get(wordKey);
 
             // Time parsing
@@ -96,6 +163,8 @@ function triggerSync(db, app) {
 module.exports = {
     getConfig,
     setConfig,
+    setConfigDebounced,
+    clearConfigCache,
     triggerSync,
     exportDatabaseToSync
 };

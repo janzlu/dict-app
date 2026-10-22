@@ -1,6 +1,8 @@
 const navWords = document.getElementById('navWords');
+const navOcr = document.getElementById('navOcr');
 const navSettings = document.getElementById('navSettings');
 const viewWords = document.getElementById('viewWords');
+const viewOcr = document.getElementById('viewOcr');
 const viewSettings = document.getElementById('viewSettings');
 
 const tbody = document.getElementById('wordTableBody');
@@ -20,146 +22,8 @@ const btnGlobalDownload = document.getElementById('btnGlobalDownload');
 const btnGlobalInstall = document.getElementById('btnGlobalInstall');
 const btnGlobalClose = document.getElementById('btnGlobalClose');
 
-// i18n
-const locales = {
-    en: {
-        title_dashboard: "Dashboard - Lumina",
-        logo: "Lumina",
-        nav_wordbook: "Wordbook",
-        nav_settings: "Settings & Sync",
-        update_available_title: "New version available!",
-        title_wordbook: "Wordbook Asset",
-        th_word: "Word",
-        th_translation: "Translation",
-        th_mastery: "Mastery",
-        th_next_review: "Next Review",
-        th_action: "Action",
-        title_settings: "Zero Server Sync",
-        desc_settings: "Select a folder inside your cloud drive (e.g. OneDrive, Dropbox) to keep your devices in sync fully automatically.",
-        label_shortcut: "Spotlight Global Shortcut",
-        hint_shortcut: "Modifiers: Command, Control, Alt, Shift. Example: Alt+Space",
-        btn_save_shortcut: "Save Shortcut",
-        label_sync_path: "Sync Folder Path",
-        btn_select_folder: "Select Folder",
-        status_prefix: "Status: ",
-        btn_force_sync: "Force Sync Now",
-        label_language: "Interface Language",
-        btn_del: "Del",
-        btn_shuffle: "🎲 Shuffle Play",
-        btn_slideshow: "📺 Auto Slideshow",
-        label_theme: "Interface Theme",
-        theme_dark: "Dark Mode (Default)",
-        theme_light: "Light Mode",
-        theme_system: "Follow OS System",
-        label_autostart: "Start on Boot",
-        desc_autostart: "Launch Lumina silently in the tray when you sign in",
-        label_autoupdate: "Auto Update",
-        desc_autoupdate: "Automatically check for updates and notify when available",
-        label_check_update: "Version Update",
-        btn_check_update: "Check for Updates",
-        btn_download_update: "Download Update",
-        btn_install_update: "Install & Relaunch",
-        label_autopopup: "Clipboard Auto-Pop",
-        desc_autopopup: "Automatically show Spotlight when a short English text is copied",
-        label_autoreview: "Ebbinghaus Auto-Pop",
-        desc_autoreview: "Silently interrupt with Ebbinghaus memory cards when due",
-        title_llm_settings: "AI Translation Engine Settings",
-        desc_llm_settings: "Configure your custom Large Language Model (e.g. DeepSeek, OpenAI) for contextual, high-precision translation.",
-        label_llm_enabled: "Enable AI Translation",
-        desc_llm_enabled: "Prioritize LLM for translation when enabled and API key is set",
-        label_llm_provider: "AI Provider",
-        label_llm_url: "API Base URL",
-        label_llm_key: "API Key",
-        label_llm_model: "Model Name",
-        btn_save_llm: "Save AI Settings",
-        btn_test_llm: "Test Connection",
-        label_free_engine: "Free Translation Engine",
-        engine_edge: "Microsoft Edge Translate (Domestic Optimized)",
-        engine_deeplx: "DeepLX Translate (High-Speed Mirror / Self-hosted)",
-        engine_google: "Google Translate (GTX API)",
-        label_deeplx_url: "DeepLX API Endpoint URL",
-        title_screenshot_settings: "Screenshot Translation Settings",
-        desc_screenshot_settings: "Configure your global screenshot shortcut, OCR engines, and API keys.",
-        label_screenshot_shortcut: "Screenshot Global Shortcut",
-        btn_save_screenshot_shortcut: "Save Shortcut",
-        label_ocr_engine: "OCR Engine",
-        label_ocr_key: "OCR.space API Key (Optional)",
-        label_youdao_ocr_app_key: "Youdao OCR App Key",
-        label_youdao_ocr_secret_key: "Youdao OCR Secret Key",
-        label_ocr_lang: "OCR Default Language",
-        btn_save_screenshot_settings: "Save Screenshot & OCR Settings"
-    },
-
-    zh: {
-        title_dashboard: "控制台 - 识光",
-        logo: "识光",
-        nav_wordbook: "生词本",
-        nav_settings: "设置与同步",
-        update_available_title: "发现新版本！",
-        title_wordbook: "生词本总览",
-        th_word: "单词",
-        th_translation: "自动释义",
-        th_mastery: "熟练度",
-        th_next_review: "下次复习",
-        th_action: "操作",
-        title_settings: "免服务无感跨端同步",
-        desc_settings: "请指定你云盘的某个专用文件夹（如 OneDrive等），后台便会静默将你的背诵进度 and 词库进行多设备双向极速合并同步。",
-        label_shortcut: "聚合查词全域快捷键",
-        hint_shortcut: "修饰键: Command, Control, Alt, Shift。例如: Alt+Space",
-        btn_save_shortcut: "应用快捷键配置",
-        label_sync_path: "网盘数据链路目录",
-        btn_select_folder: "浏览文件夹",
-        status_prefix: "驱动状态：",
-        btn_force_sync: "手动执行硬同步校验",
-        label_language: "客户端界面展现语言",
-        btn_del: "删除条目",
-        btn_shuffle: "🎲 碎片时间随机复习",
-        btn_slideshow: "📺 自动随机轮播",
-        label_theme: "客户端 UI 主题色彩",
-        theme_dark: "深色幽能模式 (默认)",
-        theme_light: "高亮柔和模式",
-        theme_system: "跟随操作系统动态变换",
-        label_autostart: "开机自动运行",
-        desc_autostart: "系统登录时，自动在后台托盘静默启动此软件引擎",
-        label_autoupdate: "静默更新检测",
-        desc_autoupdate: "自动在后台检查客户端新版本",
-        label_check_update: "版本更新",
-        btn_check_update: "手动检查更新",
-        btn_download_update: "高速下载更新包",
-        btn_install_update: "立即安装并重启",
-        label_autopopup: "划词复制唤起",
-        desc_autopopup: "默认开启。当您按下复制键提取短语文本时，将零延迟触发弹出大面板进行光速查词",
-        label_autoreview: "艾宾浩斯自动弹出",
-        desc_autoreview: "默认开启。当背诵卡片到期时，在后台静默唤起艾宾浩斯记忆闪卡进行复习",
-        title_llm_settings: "AI 智能大模型翻译引擎",
-        desc_llm_settings: "配置自定义大模型（如 DeepSeek、OpenAI）以获得最具上下文感知、极高精度的查词与句子翻译体验。",
-        label_llm_enabled: "启用 AI 智能翻译",
-        desc_llm_enabled: "开启后，若配置了 API Key，系统查词和整句翻译将优先使用大模型",
-        label_llm_provider: "大模型云服务商",
-        label_llm_url: "API 接口 Base URL",
-        label_llm_key: "API Key / 密钥",
-        label_llm_model: "模型名称 (Model)",
-        btn_save_llm: "保存 AI 引擎配置",
-        btn_test_llm: "测试 API 联通性",
-        label_free_engine: "免 Key 优化翻译线路",
-        engine_edge: "微软 Edge 翻译 (国内直连、延迟极低)",
-        engine_deeplx: "DeepLX 翻译 (极高品质、支持自建)",
-        engine_google: "谷歌翻译 (经典 GTX 引擎)",
-        label_deeplx_url: "DeepLX 自定义接口 URL",
-        title_screenshot_settings: "截图翻译功能配置",
-        desc_screenshot_settings: "在此配置全域截图翻译的快捷键、OCR 文本识别引擎及开发者授权密钥。",
-        label_screenshot_shortcut: "全域区域截图翻译快捷键",
-        btn_save_screenshot_shortcut: "应用快捷键配置",
-        label_ocr_engine: "OCR 识别引擎",
-        label_ocr_key: "OCR.space API Key (可选)",
-        label_youdao_ocr_app_key: "有道 OCR 接口 App Key",
-        label_youdao_ocr_secret_key: "有道 OCR 接口 Secret Key",
-        label_ocr_lang: "OCR 默认识别目标语言",
-        btn_save_screenshot_settings: "保存截图与 OCR 配置"
-    }
-
-
-};
+// i18n dictionary loaded from src/locales.js (window.locales)
+const locales = window.locales || { en: {}, zh: {} };
 
 // Auto-detect system language optimally on first run
 let defaultLang = 'en';
@@ -222,18 +86,296 @@ if (btnAutoSlideshow) {
 
 navWords.addEventListener('click', () => {
     navWords.classList.add('active');
+    if (navOcr) navOcr.classList.remove('active');
     navSettings.classList.remove('active');
     viewWords.classList.add('active');
+    if (viewOcr) viewOcr.classList.remove('active');
     viewSettings.classList.remove('active');
     loadWords();
 });
 
+if (navOcr) {
+    navOcr.addEventListener('click', () => {
+        navOcr.classList.add('active');
+        navWords.classList.remove('active');
+        navSettings.classList.remove('active');
+        if (viewOcr) viewOcr.classList.add('active');
+        viewWords.classList.remove('active');
+        viewSettings.classList.remove('active');
+    });
+}
+
 navSettings.addEventListener('click', () => {
     navSettings.classList.add('active');
     navWords.classList.remove('active');
+    if (navOcr) navOcr.classList.remove('active');
     viewSettings.classList.add('active');
     viewWords.classList.remove('active');
+    if (viewOcr) viewOcr.classList.remove('active');
     loadSyncConfig();
+});
+
+// ==========================================
+// Image Text Extraction (OCR) Workbench Logic
+// ==========================================
+const ocrWorkbenchDropzone = document.getElementById('ocrWorkbenchDropzone');
+const ocrWorkbenchFileInput = document.getElementById('ocrWorkbenchFileInput');
+const btnBrowseImage = document.getElementById('btnBrowseImage');
+const ocrWorkbenchPanels = document.getElementById('ocrWorkbenchPanels');
+const ocrImagePreview = document.getElementById('ocrImagePreview');
+const ocrImageMeta = document.getElementById('ocrImageMeta');
+const btnChangeImage = document.getElementById('btnChangeImage');
+const ocrWorkbenchLangSelect = document.getElementById('ocrWorkbenchLangSelect');
+const ocrResultTextarea = document.getElementById('ocrResultTextarea');
+const ocrCharCountBadge = document.getElementById('ocrCharCountBadge');
+const ocrLoadingSpinner = document.getElementById('ocrLoadingSpinner');
+const btnReOcr = document.getElementById('btnReOcr');
+const btnClearOcr = document.getElementById('btnClearOcr');
+const btnCopyOcrText = document.getElementById('btnCopyOcrText');
+const btnTranslateOcrText = document.getElementById('btnTranslateOcrText');
+const btnExportOcrTxt = document.getElementById('btnExportOcrTxt');
+const ocrActionFeedback = document.getElementById('ocrActionFeedback');
+const ocrTranslationContainer = document.getElementById('ocrTranslationContainer');
+const ocrTranslationText = document.getElementById('ocrTranslationText');
+const btnCloseOcrTrans = document.getElementById('btnCloseOcrTrans');
+
+let currentWorkbenchImageBase64 = null;
+
+function updateOcrCharCount() {
+    if (!ocrResultTextarea || !ocrCharCountBadge) return;
+    const text = ocrResultTextarea.value || '';
+    const chars = text.length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    ocrCharCountBadge.textContent = `${chars} 字符 / ${words} 词`;
+}
+
+if (ocrResultTextarea) {
+    ocrResultTextarea.addEventListener('input', updateOcrCharCount);
+}
+
+function showOcrFeedback(msg) {
+    if (!ocrActionFeedback) return;
+    ocrActionFeedback.textContent = msg;
+    setTimeout(() => {
+        if (ocrActionFeedback.textContent === msg) {
+            ocrActionFeedback.textContent = '';
+        }
+    }, 2500);
+}
+
+async function runWorkbenchOcr() {
+    if (!currentWorkbenchImageBase64) return;
+    if (ocrLoadingSpinner) ocrLoadingSpinner.style.display = 'flex';
+    if (btnReOcr) btnReOcr.disabled = true;
+
+    const lang = ocrWorkbenchLangSelect ? ocrWorkbenchLangSelect.value : 'auto';
+    try {
+        const res = await window.api.extractTextFromImage({
+            image: currentWorkbenchImageBase64,
+            lang: lang,
+            copyToClipboard: false
+        });
+
+        if (res && res.success && res.text) {
+            ocrResultTextarea.value = res.text;
+            updateOcrCharCount();
+            showOcrFeedback("✓ 识别完成");
+        } else {
+            ocrResultTextarea.value = '';
+            updateOcrCharCount();
+            showOcrFeedback("⚠️ " + (res?.error || '未识别到清晰文字'));
+        }
+    } catch (err) {
+        ocrResultTextarea.value = `[OCR 异常] ${err.message || err}`;
+        updateOcrCharCount();
+    } finally {
+        if (ocrLoadingSpinner) ocrLoadingSpinner.style.display = 'none';
+        if (btnReOcr) btnReOcr.disabled = false;
+    }
+}
+
+function loadWorkbenchImage(base64Data, filename = 'Image') {
+    currentWorkbenchImageBase64 = base64Data;
+    if (ocrImagePreview) ocrImagePreview.src = base64Data;
+    if (ocrImageMeta) {
+        const img = new Image();
+        img.onload = () => {
+            ocrImageMeta.textContent = `${filename} · ${img.naturalWidth} × ${img.naturalHeight} px`;
+        };
+        img.src = base64Data;
+    }
+    if (ocrWorkbenchDropzone) ocrWorkbenchDropzone.style.display = 'none';
+    if (ocrWorkbenchPanels) ocrWorkbenchPanels.style.display = 'grid';
+    if (ocrTranslationContainer) ocrTranslationContainer.style.display = 'none';
+    runWorkbenchOcr();
+}
+
+function handleWorkbenchFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        loadWorkbenchImage(e.target.result, file.name || 'image.png');
+    };
+    reader.readAsDataURL(file);
+}
+
+if (btnBrowseImage && ocrWorkbenchFileInput) {
+    btnBrowseImage.addEventListener('click', (e) => {
+        e.stopPropagation();
+        ocrWorkbenchFileInput.click();
+    });
+}
+
+if (ocrWorkbenchDropzone) {
+    ocrWorkbenchDropzone.addEventListener('click', () => {
+        if (ocrWorkbenchFileInput) ocrWorkbenchFileInput.click();
+    });
+
+    ocrWorkbenchDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ocrWorkbenchDropzone.classList.add('dragover');
+    });
+
+    ocrWorkbenchDropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ocrWorkbenchDropzone.classList.remove('dragover');
+    });
+
+    ocrWorkbenchDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ocrWorkbenchDropzone.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleWorkbenchFile(e.dataTransfer.files[0]);
+        }
+    });
+}
+
+if (ocrWorkbenchFileInput) {
+    ocrWorkbenchFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            handleWorkbenchFile(e.target.files[0]);
+        }
+    });
+}
+
+if (btnChangeImage) {
+    btnChangeImage.addEventListener('click', () => {
+        if (ocrWorkbenchFileInput) ocrWorkbenchFileInput.click();
+    });
+}
+
+if (btnReOcr) {
+    btnReOcr.addEventListener('click', () => {
+        runWorkbenchOcr();
+    });
+}
+
+if (ocrWorkbenchLangSelect) {
+    ocrWorkbenchLangSelect.addEventListener('change', () => {
+        if (currentWorkbenchImageBase64) {
+            runWorkbenchOcr();
+        }
+    });
+}
+
+if (btnClearOcr) {
+    btnClearOcr.addEventListener('click', () => {
+        currentWorkbenchImageBase64 = null;
+        if (ocrResultTextarea) ocrResultTextarea.value = '';
+        if (ocrWorkbenchPanels) ocrWorkbenchPanels.style.display = 'none';
+        if (ocrWorkbenchDropzone) ocrWorkbenchDropzone.style.display = 'block';
+        if (ocrWorkbenchFileInput) ocrWorkbenchFileInput.value = '';
+        if (ocrTranslationContainer) ocrTranslationContainer.style.display = 'none';
+        updateOcrCharCount();
+    });
+}
+
+if (btnCopyOcrText) {
+    btnCopyOcrText.addEventListener('click', async () => {
+        const text = ocrResultTextarea ? ocrResultTextarea.value : '';
+        if (!text.trim()) {
+            showOcrFeedback("文本为空");
+            return;
+        }
+        if (window.api.copyTextToClipboard) {
+            await window.api.copyTextToClipboard(text);
+            showOcrFeedback("✓ 文字已成功复制到剪贴板！");
+        }
+    });
+}
+
+if (btnTranslateOcrText) {
+    btnTranslateOcrText.addEventListener('click', async () => {
+        const text = ocrResultTextarea ? ocrResultTextarea.value.trim() : '';
+        if (!text) {
+            showOcrFeedback("请先提取文字");
+            return;
+        }
+        btnTranslateOcrText.disabled = true;
+        btnTranslateOcrText.textContent = "⏳ 正在翻译...";
+        try {
+            const res = await window.api.searchWord(text);
+            if (res && res.data && (res.data.translation || res.data.definition)) {
+                if (ocrTranslationContainer && ocrTranslationText) {
+                    ocrTranslationText.textContent = res.data.translation || res.data.definition;
+                    ocrTranslationContainer.style.display = 'block';
+                }
+                showOcrFeedback("✓ 翻译成功");
+            } else {
+                showOcrFeedback("未获取到译文: " + (res?.error || '无返回'));
+            }
+        } catch (e) {
+            showOcrFeedback("翻译异常: " + e.message);
+        } finally {
+            btnTranslateOcrText.disabled = false;
+            btnTranslateOcrText.textContent = "🔍 智能翻译";
+        }
+    });
+}
+
+if (btnCloseOcrTrans) {
+    btnCloseOcrTrans.addEventListener('click', () => {
+        if (ocrTranslationContainer) ocrTranslationContainer.style.display = 'none';
+    });
+}
+
+if (btnExportOcrTxt) {
+    btnExportOcrTxt.addEventListener('click', async () => {
+        const text = ocrResultTextarea ? ocrResultTextarea.value : '';
+        if (!text.trim()) {
+            showOcrFeedback("内容为空");
+            return;
+        }
+        if (window.api.saveTextFile) {
+            const defaultName = `OCR_Text_${Date.now()}.txt`;
+            const res = await window.api.saveTextFile(text, defaultName);
+            if (res && res.success) {
+                showOcrFeedback("✓ 已导出保存至文件");
+            }
+        }
+    });
+}
+
+// Global Paste Event inside Dashboard for quick OCR
+window.addEventListener('paste', (e) => {
+    if (viewOcr && viewOcr.classList.contains('active')) {
+        if (e.clipboardData && e.clipboardData.items) {
+            for (let i = 0; i < e.clipboardData.items.length; i++) {
+                const item = e.clipboardData.items[i];
+                if (item.type && item.type.startsWith('image/')) {
+                    const blob = item.getAsFile();
+                    if (blob) {
+                        e.preventDefault();
+                        handleWorkbenchFile(blob);
+                        return;
+                    }
+                }
+            }
+        }
+    }
 });
 
 // Logic
@@ -279,11 +421,21 @@ function renderTablePage() {
         let reviewText = w.next_review_time ? new Date(w.next_review_time).toLocaleString() : 'N/A';
         if (w.mastery_level === 5) reviewText = 'Mastered';
 
+        const hasImage = !!w.image_path;
+        const imgBadgeHtml = hasImage
+            ? `<button class="word-img-badge" data-image-path="${encodeURIComponent(w.image_path)}" data-word="${encodeURIComponent(w.word)}" title="${(locales[currentLang] && locales[currentLang].tooltip_view_image) || 'View screenshot snapshot'}">📷</button>`
+            : '';
+
         tr.innerHTML = `
-            <td class="td-word">${w.word}</td>
-            <td>${w.translation || ''}</td>
-            <td>Lv. ${w.mastery_level}</td>
-            <td>${reviewText}</td>
+            <td class="td-word">
+                <div style="display: inline-flex; align-items: center;">
+                    <span>${escapeHtml(w.word)}</span>
+                    ${imgBadgeHtml}
+                </div>
+            </td>
+            <td>${escapeHtml(w.translation || '')}</td>
+            <td>Lv. ${escapeHtml(String(w.mastery_level ?? 0))}</td>
+            <td>${escapeHtml(reviewText)}</td>
             <td>
                 <button class="delete-btn" data-id="${w.id}" title="${locales[currentLang].btn_del}">
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
@@ -296,6 +448,15 @@ function renderTablePage() {
             </td>
         `;
         tbody.appendChild(tr);
+    });
+
+    document.querySelectorAll('.word-img-badge').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const imgPath = decodeURIComponent(btn.getAttribute('data-image-path'));
+            const word = decodeURIComponent(btn.getAttribute('data-word'));
+            openScreenshotLightbox(word, imgPath);
+        });
     });
 
     document.querySelectorAll('.delete-btn').forEach(btn => {
@@ -437,13 +598,14 @@ async function loadSyncConfig() {
 
         if (ssShortcutInput) ssShortcutInput.value = config.screenshotShortcut || 'CommandOrControl+Shift+X';
         if (ocrEngineSelect) {
-            ocrEngineSelect.value = config.ocrEngine || 'ocr_space';
+            const isMac = navigator.userAgent.includes('Mac') || navigator.platform.includes('Mac');
+            ocrEngineSelect.value = config.ocrEngine || (isMac ? 'mac_vision' : 'ocr_space');
             toggleOcrInputs(ocrEngineSelect.value);
         }
         if (ocrKeyInput) ocrKeyInput.value = config.ocrApiKey || '';
         if (youdaoOcrAppKeyInput) youdaoOcrAppKeyInput.value = config.youdaoOcrAppKey || '';
         if (youdaoOcrSecretKeyInput) youdaoOcrSecretKeyInput.value = config.youdaoOcrSecretKey || '';
-        if (ocrLangSelect) ocrLangSelect.value = config.ocrLang || 'eng';
+        if (ocrLangSelect) ocrLangSelect.value = config.ocrLang || 'auto';
 
         // Display Shortcut Status Badges
         const shortcutStatus = document.getElementById('shortcutStatus');
@@ -834,6 +996,121 @@ if (syncHelpModal) {
     });
 }
 
+// Screenshot Lightbox Modal Logic
+let currentLightboxDataUrl = null;
+const screenshotLightboxModal = document.getElementById('screenshotLightboxModal');
+const closeScreenshotLightbox = document.getElementById('closeScreenshotLightbox');
+const lightboxTitle = document.getElementById('lightboxTitle');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxLoading = document.getElementById('lightboxLoading');
+const btnCopyLightbox = document.getElementById('btnCopyLightbox');
+const btnSaveLightbox = document.getElementById('btnSaveLightbox');
+
+async function openScreenshotLightbox(word, imgPath) {
+    if (!screenshotLightboxModal) return;
+    currentLightboxDataUrl = null;
+
+    const prefix = locales[currentLang].lightbox_title || 'Screenshot Snapshot';
+    if (lightboxTitle) {
+        lightboxTitle.innerHTML = `📷 <span>${escapeHtml(word)}</span> - <span data-i18n="lightbox_title">${prefix}</span>`;
+    }
+
+    if (lightboxLoading) {
+        lightboxLoading.style.display = 'block';
+        lightboxLoading.textContent = currentLang === 'zh' ? '加载中...' : 'Loading...';
+    }
+    if (lightboxImg) {
+        lightboxImg.style.display = 'none';
+        lightboxImg.src = '';
+    }
+
+    screenshotLightboxModal.classList.add('show');
+
+    try {
+        const dataUrl = await window.api.getWordImage(imgPath);
+        if (dataUrl) {
+            currentLightboxDataUrl = dataUrl;
+            if (lightboxImg) {
+                lightboxImg.src = dataUrl;
+                lightboxImg.onload = () => {
+                    if (lightboxLoading) lightboxLoading.style.display = 'none';
+                    lightboxImg.style.display = 'block';
+                };
+            }
+        } else {
+            if (lightboxLoading) {
+                lightboxLoading.textContent = locales[currentLang].img_load_fail || 'Screenshot snapshot not found or removed.';
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load image:', err);
+        if (lightboxLoading) {
+            lightboxLoading.textContent = (currentLang === 'zh' ? '加载失败: ' : 'Failed to load: ') + err.message;
+        }
+    }
+}
+
+function closeLightbox() {
+    if (screenshotLightboxModal) {
+        screenshotLightboxModal.classList.remove('show');
+        currentLightboxDataUrl = null;
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+if (closeScreenshotLightbox) {
+    closeScreenshotLightbox.addEventListener('click', closeLightbox);
+}
+
+if (screenshotLightboxModal) {
+    screenshotLightboxModal.addEventListener('click', (e) => {
+        if (e.target === screenshotLightboxModal) {
+            closeLightbox();
+        }
+    });
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && screenshotLightboxModal && screenshotLightboxModal.classList.contains('show')) {
+        closeLightbox();
+    }
+});
+
+if (btnCopyLightbox) {
+    btnCopyLightbox.addEventListener('click', async () => {
+        if (!currentLightboxDataUrl) return;
+        const res = await window.api.copyScreenshotImage(currentLightboxDataUrl);
+        if (res && res.success) {
+            const btnSpan = btnCopyLightbox.querySelector('[data-i18n="btn_copy_image"]') || btnCopyLightbox;
+            const originalText = btnSpan.textContent;
+            btnSpan.textContent = locales[currentLang].img_copied || 'Copied!';
+            setTimeout(() => { btnSpan.textContent = originalText; }, 1800);
+        }
+    });
+}
+
+if (btnSaveLightbox) {
+    btnSaveLightbox.addEventListener('click', async () => {
+        if (!currentLightboxDataUrl) return;
+        const res = await window.api.saveScreenshotImage(currentLightboxDataUrl);
+        if (res && res.success) {
+            const btnSpan = btnSaveLightbox.querySelector('[data-i18n="btn_save_image"]') || btnSaveLightbox;
+            const originalText = btnSpan.textContent;
+            btnSpan.textContent = locales[currentLang].img_saved || 'Saved!';
+            setTimeout(() => { btnSpan.textContent = originalText; }, 1800);
+        }
+    });
+}
+
 let chartDist = null;
 let chartFore = null;
 let chartHeat = null;
@@ -1134,6 +1411,10 @@ function toggleOcrInputs(engine) {
         if (ocrSpaceKeyGroup) ocrSpaceKeyGroup.style.display = 'none';
         if (youdaoOcrAppKeyGroup) youdaoOcrAppKeyGroup.style.display = 'block';
         if (youdaoOcrSecretKeyGroup) youdaoOcrSecretKeyGroup.style.display = 'block';
+    } else if (engine === 'mac_vision') {
+        if (ocrSpaceKeyGroup) ocrSpaceKeyGroup.style.display = 'none';
+        if (youdaoOcrAppKeyGroup) youdaoOcrAppKeyGroup.style.display = 'none';
+        if (youdaoOcrSecretKeyGroup) youdaoOcrSecretKeyGroup.style.display = 'none';
     } else {
         if (ocrSpaceKeyGroup) ocrSpaceKeyGroup.style.display = 'block';
         if (youdaoOcrAppKeyGroup) youdaoOcrAppKeyGroup.style.display = 'none';

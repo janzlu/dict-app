@@ -12,6 +12,7 @@
         <div class="logo" data-i18n="logo">Lumina</div>
         <nav>
             <a href="#" class="active" id="navWords" data-i18n="nav_wordbook">Wordbook</a>
+            <a href="#" id="navOcr" data-i18n="nav_ocr">Text Extractor</a>
             <a href="#" id="navSettings" data-i18n="nav_settings">Settings & Sync</a>
         </nav>
         <div class="app-version" id="appVersionDisplay" style="position: absolute; bottom: 30px; left: 24px; font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 500; font-family: monospace;"></div>
@@ -84,6 +85,102 @@
                 <button id="btnPrevPage" class="btn secondary" data-i18n="btn_prev">Previous</button>
                 <span id="pageIndicator">Page 1 of 1</span>
                 <button id="btnNextPage" class="btn secondary" data-i18n="btn_next">Next</button>
+            </div>
+        </div>
+
+        <!-- OCR Workbench View -->
+        <div id="viewOcr" class="view">
+            <header>
+                <div>
+                    <h1 data-i18n="title_ocr">图片文字提取 (Image Text Extractor)</h1>
+                    <p style="margin: 6px 0 0 0; color: var(--text-secondary); font-size: 13px;" data-i18n="desc_ocr">
+                        支持上传本地图片、截图拖拽或剪贴板图片粘贴，快速进行高精度 OCR 识别、文字编辑与一键导出。
+                    </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <label style="font-size: 13px; color: var(--text-secondary);" data-i18n="label_ocr_lang_select">识别语言:</label>
+                    <select id="ocrWorkbenchLangSelect" style="background: var(--bg-card); border: 1px solid var(--border); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; outline: none;">
+                        <option value="auto">中英混合 / 自动识别 (Auto / Chs+Eng)</option>
+                        <option value="chs">Simplified Chinese (简体中文)</option>
+                        <option value="eng">English (英语)</option>
+                        <option value="cht">Traditional Chinese (繁体中文)</option>
+                        <option value="jpn">Japanese (日语)</option>
+                        <option value="kor">Korean (韩语)</option>
+                        <option value="fre">French (法语)</option>
+                        <option value="ger">German (德语)</option>
+                        <option value="spa">Spanish (西班牙语)</option>
+                        <option value="rus">Russian (俄语)</option>
+                    </select>
+                </div>
+            </header>
+
+            <!-- Dropzone & Upload Box -->
+            <div id="ocrWorkbenchDropzone" class="ocr-workbench-dropzone">
+                <input type="file" id="ocrWorkbenchFileInput" accept="image/*" style="display: none;">
+                <div class="dropzone-content">
+                    <div style="font-size: 44px; margin-bottom: 12px;">🖼️</div>
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 6px;" data-i18n="dropzone_title">点击选择图片，或拖拽图片文件到此处</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;" data-i18n="dropzone_subtitle">支持 PNG, JPG, JPEG, WEBP, BMP 格式，亦可直接按 Cmd+V / Ctrl+V 粘贴剪贴板图片</div>
+                    <button id="btnBrowseImage" class="btn primary" style="padding: 8px 20px; font-size: 13px;" data-i18n="btn_browse_image">浏览本地文件</button>
+                </div>
+            </div>
+
+            <!-- Workbench Dual Panels -->
+            <div id="ocrWorkbenchPanels" class="ocr-workbench-panels" style="display: none; margin-top: 24px;">
+                <div class="cockpit-card ocr-panel-left">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0;" data-i18n="ocr_preview_title">图片预览</h3>
+                        <button id="btnChangeImage" class="btn secondary" style="padding: 4px 10px; font-size: 11px;" data-i18n="btn_change_image">更换图片</button>
+                    </div>
+                    <div class="ocr-image-preview-wrapper">
+                        <img id="ocrImagePreview" class="ocr-image-preview" alt="Preview">
+                    </div>
+                    <div id="ocrImageMeta" style="font-size: 12px; color: var(--text-secondary); margin-top: 10px;"></div>
+                </div>
+
+                <div class="cockpit-card ocr-panel-right">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0; display: flex; align-items: center;">
+                            <span data-i18n="ocr_result_title">提取文本</span>
+                            <span id="ocrCharCountBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(0, 210, 255, 0.15); color: var(--accent); margin-left: 8px; font-weight: 500;">0 字</span>
+                        </h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btnReOcr" class="btn secondary" style="padding: 4px 10px; font-size: 11px;" data-i18n="btn_re_ocr">重新识别</button>
+                            <button id="btnClearOcr" class="btn secondary" style="padding: 4px 10px; font-size: 11px;" data-i18n="btn_clear_ocr">清空</button>
+                        </div>
+                    </div>
+
+                    <div style="position: relative; flex-grow: 1; display: flex; flex-direction: column;">
+                        <textarea id="ocrResultTextarea" class="ocr-result-textarea" placeholder="提取的文字将展示在此处，支持直接编辑排版..." spellcheck="false"></textarea>
+                        
+                        <!-- Loading Indicator inside Textarea -->
+                        <div id="ocrLoadingSpinner" class="ocr-loading-overlay" style="display: none;">
+                            <svg class="spinner" viewBox="0 0 50 50" style="width: 32px; height: 32px; animation: spin 1s linear infinite;">
+                                <circle cx="25" cy="25" r="20" fill="none" stroke="var(--accent)" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="80, 200" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div style="margin-top: 14px; font-size: 14px; color: var(--text-primary); font-weight: 500;" data-i18n="ocr_processing">正在识别解析文字中...</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Bar -->
+                    <div class="ocr-action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btnCopyOcrText" class="btn primary" style="padding: 7px 16px; font-size: 12px;" data-i18n="btn_copy_ocr_text">📋 复制全部文字</button>
+                            <button id="btnTranslateOcrText" class="btn secondary" style="padding: 7px 16px; font-size: 12px;" data-i18n="btn_translate_ocr_text">🔍 智能翻译</button>
+                            <button id="btnExportOcrTxt" class="btn secondary" style="padding: 7px 16px; font-size: 12px;" data-i18n="btn_export_txt">💾 导出为 TXT</button>
+                        </div>
+                        <span id="ocrActionFeedback" style="font-size: 12px; color: #00ffaa; font-weight: 500;"></span>
+                    </div>
+
+                    <!-- Translation Box (Collapsible) -->
+                    <div id="ocrTranslationContainer" style="display: none; margin-top: 16px; padding: 14px; border-radius: 8px; background: rgba(0, 210, 255, 0.05); border: 1px solid rgba(0, 210, 255, 0.2);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <strong style="font-size: 13px; color: var(--accent);" data-i18n="ocr_trans_title">中文译文 (Translation)</strong>
+                            <button id="btnCloseOcrTrans" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 13px;">✕</button>
+                        </div>
+                        <div id="ocrTranslationText" style="font-size: 13px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -292,7 +389,8 @@
                     <label data-i18n="label_ocr_engine">OCR 识别引擎 (OCR Engine)</label>
                     <div class="input-row">
                         <select id="ocrEngineSelect">
-                            <option value="ocr_space">OCR.space (默认免 Key 免费引擎)</option>
+                            <option value="mac_vision">Apple Vision (macOS 原生离线引擎，中英极速免 Key)</option>
+                            <option value="ocr_space">OCR.space (多语言神经网络云引擎，免 Key)</option>
                             <option value="youdao">有道智云 OCR (高速稳定、需 API Key)</option>
                         </select>
                     </div>
@@ -323,8 +421,10 @@
                     <label data-i18n="label_ocr_lang">OCR 默认语种 (Target Language)</label>
                     <div class="input-row">
                         <select id="ocrLangSelect">
-                            <option value="eng">英语 (English)</option>
+                            <option value="auto">中英混合 / 自动识别 (Auto / Chs+Eng)</option>
                             <option value="chs">中文简体 (Chinese Simplified)</option>
+                            <option value="eng">英语 (English)</option>
+                            <option value="cht">中文繁体 (Chinese Traditional)</option>
                             <option value="kor">韩语 (Korean)</option>
                             <option value="jpn">日语 (Japanese)</option>
                             <option value="fre">法语 (French)</option>
@@ -362,7 +462,26 @@
         </div>
     </div>
 
+    <!-- Screenshot Lightbox Modal -->
+    <div id="screenshotLightboxModal" class="modal-overlay">
+        <div class="modal-content lightbox-modal-content">
+            <div class="modal-header">
+                <h2 id="lightboxTitle">📷 <span data-i18n="lightbox_title">Screenshot Snapshot</span></h2>
+                <div class="lightbox-modal-actions" style="display: flex; gap: 8px; align-items: center;">
+                    <button id="btnCopyLightbox" class="btn secondary" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">📋 <span data-i18n="btn_copy_image">Copy</span></button>
+                    <button id="btnSaveLightbox" class="btn secondary" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">💾 <span data-i18n="btn_save_image">Save As</span></button>
+                    <button id="closeScreenshotLightbox" class="modal-close">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body lightbox-modal-body">
+                <div id="lightboxLoading" class="lightbox-loading">Loading...</div>
+                <img id="lightboxImg" class="lightbox-img" alt="Screenshot Snapshot" style="display: none;" />
+            </div>
+        </div>
+    </div>
+
     <script src="echarts.min.js"></script>
+    <script src="locales.js"></script>
     <script src="dashboard.js"></script>
 </body>
 </html>

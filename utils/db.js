@@ -40,6 +40,7 @@ function initDb(app) {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             category_id INTEGER,
+            image_path TEXT,
             FOREIGN KEY(category_id) REFERENCES categories(id)
         );
 
@@ -53,6 +54,30 @@ function initDb(app) {
             FOREIGN KEY(word_id) REFERENCES words(id) ON DELETE CASCADE
         );
     `);
+
+    // Dynamic schema migration for existing databases
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(words)").all();
+        const hasImagePath = tableInfo.some(col => col.name === 'image_path');
+        if (!hasImagePath) {
+            db.exec("ALTER TABLE words ADD COLUMN image_path TEXT;");
+            console.log("Database schema migrated: added image_path column to words table");
+        }
+    } catch (e) {
+        console.error("Database migration check failed:", e);
+    }
+
+    // Create secondary indexes for high-frequency review queue & analytics queries
+    try {
+        db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_words_review_queue ON words(mastery_level, next_review_time);
+            CREATE INDEX IF NOT EXISTS idx_words_updated_at ON words(updated_at);
+            CREATE INDEX IF NOT EXISTS idx_review_logs_review_time ON review_logs(review_time);
+            CREATE INDEX IF NOT EXISTS idx_review_logs_word_id ON review_logs(word_id);
+        `);
+    } catch (e) {
+        console.error("Database index creation failed:", e);
+    }
 
     console.log(`Database initialized at: ${dbPath}`);
     return db;

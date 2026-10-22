@@ -1,10 +1,56 @@
 # 识光 (Lumina) - 架构演进与未来路线图 (Evolution Roadmap)
 
-基于当前版本（V1.8.1）的产品特性与后续用户对“极致轻量化”、“免安装”、“插件式”的诉求，我们梳理了本项目的纵向演进历史，并规划了未来的横向技术升级路线。
+基于当前版本（V1.9.1）的产品特性与后续用户对“极致轻量化”、“免安装”、“插件式”的诉求，我们梳理了本项目的纵向演进历史，并规划了未来的横向技术升级路线。
 
 ---
 
 ## 一、架构层层突围史 (Architecture Evolution)
+
+### V1.9.1 离线原生 Vision OCR、8 向选框缩放、双栏对照与全链路保存落地 (Offline Native OCR & Interaction Overhaul)
+基于真实硬件与日常高强度测试，针对旧版截屏无法保存、生词缺乏语境图像、选区无法调大小、中文识别乱码及 OCR 假死五大顽疾进行了全面突围与架构升级，并成功产出稳定发行版 DMG 安装包：
+*   **内置 Apple Vision 离线原生 OCR 引擎 (`resources/mac_ocr`)**：
+    *   在 macOS 下编译并内置基于 Swift / Vision Framework 的原生 OCR 工具，耗时仅 10~20ms，100% 离线运行，免网络、免 Key、零额度消耗。
+    *   支持简体中文 (`zh-Hans`)、繁体中文 (`zh-Hant`)、英文 (`en-US`) 及日文多语种混合高精度识别，中文分词与标点极佳，彻底消灭字符乱码。
+*   **截图选区 8 向调节把手与整体平移 (8-Way Resize Handles & Drag-to-Move)**：
+    *   选区划定后不仅可在框内按住整体移动，边缘自适应呈现 4 角 + 4 边共 8 个控制手柄（`nw/n/ne/e/se/s/sw/w`），光标自适应切换，彻底解决截图框划偏无法微调的痛点。
+*   **文字提取双栏对照弹窗 (Recognition Comparison Modal)**：
+    *   点击工具栏“📝 提取文字”(`T`) 立即唤起双栏弹窗：左侧选区原图与尺寸信息，右侧展示可编辑校对文本与字数统计。
+    *   集成一键「📋 复制文字」（带绿色高亮成功动效反馈）、「🔍 查词翻译」与「💾 保存图片」，文本自动写入剪贴板，彻底告别单调文本乱码或混乱 UI。
+*   **截图实打实落盘保存 (Native Save Dialog)**：
+    *   修复了旧版文件保存丢失和 `fs` 引用异常；点击“保存图片”立即调起系统级原生 `dialog.showSaveDialog` 窗口，支持自由选择保存路径并直接落盘写入 PNG 文件。
+*   **全局快捷键热重载与实时生效 (Shortcut Hot-Reload)**：
+    *   优化了设置面板中快捷键的实时重新注册机制，防抖捕获键盘击键组合，解决快捷键修改后需重启或无效的问题。
+*   **macOS 生产级 DMG 与 ZIP 自动化打包 (Production Packaging Pipeline)**：
+    *   预设 `CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:mac`，自动整合 Swift 原生可执行工具与 SQLite 资源包，一键输出标准 DMG 镜像与便携 ZIP。
+*   **生词图文资产沉淀与双端 Lightbox**：
+    *   SQLite `words` 表新增 `image_path` 字段并支持平滑热迁移；截词入库时原图异步落盘至 `userData/screenshots/`。
+    *   Dashboard 生词列表展示 `📷` 徽章，点击在全屏毛玻璃 Lightbox 弹窗中载入截屏快照，并支持一键复制与另存为。
+
+### V1.9.0 截图翻译黑科技、免 Key 级联与 macOS 原生深化 (Multi-Engine & Native Integration)
+在经历了 V1.8.x 的数据可视化与基础 OTA 闭环后，V1.9.0 标志着 Lumina 的查词、翻译与系统融合达到了**多端原生、高精度、低延迟与高容灾**的工业级标准：
+*   **全域区域截图翻译 (Global Screenshot Translation)**：
+    *   **系统级快速截屏**：按下全局快捷键 `CommandOrControl+Shift+X`（全平台支持自定义并配有热键冲突检测徽章），自动捕获鼠标所在屏幕并唤起全屏半透明遮罩进行任意区域裁剪。
+    *   **高保真缩略图与 Lightbox 大图浏览器**：识别成功后查词面板智能嵌入选区缩略图，点击可在磨砂毛玻璃遮罩中唤起全屏原图对照查看。
+*   **智能代码与中文保护引擎 (Preservation Engine)**：
+    *   在 `utils/preservation.js` 中构建源头级占位隔离器。自动提取 backticks 代码、HTML 标签、行/块注释、camelCase/snake_case 标识符及已存中文字串，转化为 `[__CODE_N__]` 占位符。
+    *   **配置化专业术语映射 (Glossary Engine)**：基于 `resources/glossary.json`（及用户自定义目录）进行词汇表前置预匹配替换（如 `Auto-Pop` 自动弹出、`memory cards` 记忆卡），翻译后在对应位置精准还原，根治引擎升级导致的译文走样。
+*   **地理自适应 OCR 路由与容灾 (Geo-Aware Routing)**：
+    *   自动识别 UTC+8 时区，**首选且强制路由至 `ocr.space` 亚洲机房（api3 节点）**；内置**亚洲 ➔ 美国 ➔ 欧洲**三级节点自动顺序轮巡重试逻辑。
+    *   集成有道云 OCR 商业级接口（支持 AppKey / AppSecret 与 SHA-256 HMAC 鉴权签名）。
+*   **免 Key 优化翻译线路与级联回退 (No-Key Multi-Route)**：
+    *   新增 **微软 Edge 翻译**（国内直连优化低延迟）、**DeepLX 翻译**（高品质社区镜像与本地 Docker 自建 URL）及 **谷歌翻译** (GTX 引擎)。
+    *   主进程内置 `queryFreeEngine` 级联回退链，首选线路超时（4s 熔断）自动顺次切换备用路由，保障 100% 连通。
+*   **自定义 AI 大模型翻译 (LLM Engine)**：
+    *   深度接入 DeepSeek、OpenAI 等标准兼容的大语言模型 API，支持用户自定义 Base URL、API Key 与 Model 名称，实现语境级长段落高精准翻译。
+*   **全局自动更新横幅与下载进度可视化 (Global Auto-Update Banner)**：
+    *   在主视图顶部滑入全局通知横幅，配合玻璃摩砂动效。点击高速下载直接呈现动态百分比进度条，下载后一键安全热重启（Quit and Install）。
+*   **macOS 原生生态深度融合 (macOS Deep Native Integration)**：
+    *   配置 macOS 原生 Dock 菜单：右键图标快速调出「打开生词本中心」、「🔍 查词面板」与「🎲 碎片复习」。
+    *   适配系统级托盘单击与双击交互、无框半透明背景材料与 `app.on('activate')` 窗体唤醒。
+    *   新增 `npm run dist:mac`，输出标准 `.dmg`（内置 Applications 软链接拖拽安装布局）与 `.zip`。
+*   **现代化双轨自动化测试防护网 (Automated Test Suite)**：
+    *   构建 Jest 纯逻辑单元测试（SM-2 算法阶梯、词法与占位符保护引擎）。
+    *   构建 Playwright for Electron 端到端 E2E 测试套件，通过环境变量测试桩避免物理快捷键与单实例锁冲突。
 
 ### V1.8.1 活塞引擎与全自动更新流 (OTA Update)
 在经历了 V1.8.0 的复杂数据可视化重构后，V1.8.1 补齐了现代化桌面软件的最后一块基础拼图：**全自动/无感/多模态更新体系**。

@@ -13,17 +13,469 @@
             background: transparent;
             cursor: crosshair;
             user-select: none;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
         }
         canvas {
             display: block;
             width: 100%;
             height: 100%;
         }
+
+        /* Floating Cyber Action Toolbar */
+        .action-toolbar {
+            position: absolute;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: rgba(18, 19, 26, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 9px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 210, 255, 0.2);
+            z-index: 1000;
+            pointer-events: auto;
+            transform-origin: top right;
+            animation: popIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.92); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 28px;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn.primary-btn {
+            background: linear-gradient(135deg, #00d2ff, #0072ff);
+            border-color: rgba(0, 210, 255, 0.5);
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(0, 114, 255, 0.35);
+        }
+
+        .action-btn.primary-btn:hover {
+            box-shadow: 0 4px 14px rgba(0, 210, 255, 0.5);
+        }
+
+        .action-btn.close-btn {
+            padding: 0 8px;
+            color: #94a3b8;
+        }
+
+        .action-btn.close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .action-btn.success-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-color: rgba(16, 185, 129, 0.5);
+            color: #ffffff;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            opacity: 0;
+            background: rgba(15, 23, 42, 0.94);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 2000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* OCR Recognition Comparison Modal (识别对照全屏浮层) */
+        .comparison-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(8, 10, 16, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            pointer-events: auto;
+            cursor: default;
+            user-select: none;
+            animation: fadeIn 0.16s ease-out;
+        }
+
+        .comparison-dialog {
+            width: 90vw;
+            max-width: 860px;
+            height: 540px;
+            max-height: 85vh;
+            background: #141724;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 210, 255, 0.25);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .comparison-header {
+            height: 48px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.02);
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .comparison-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .comparison-title {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+
+        .comp-badge {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(0, 210, 255, 0.12);
+            color: #00d2ff;
+            border: 1px solid rgba(0, 210, 255, 0.25);
+        }
+
+        .comp-badge.engine-badge {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.22);
+        }
+
+        .comp-close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .comp-close-btn:hover {
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .comparison-body {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 14px;
+            padding: 14px 16px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .comp-card {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
+            background: #0b0d14;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .comp-card-header {
+            height: 34px;
+            padding: 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #cbd5e1;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .comp-meta {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .comp-subtext {
+            font-size: 11px;
+            color: #00d2ff;
+            font-weight: 400;
+        }
+
+        .comp-image-wrapper {
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            background: #06070b;
+            overflow: auto;
+            box-sizing: border-box;
+        }
+
+        .comp-image {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: block;
+        }
+
+        .comp-textarea-wrapper {
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #06070b;
+            box-sizing: border-box;
+        }
+
+        .comp-textarea {
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            padding: 12px 14px;
+            margin: 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            color: #f8fafc;
+            font-size: 13.5px;
+            line-height: 1.65;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+            box-sizing: border-box;
+            user-select: text;
+            cursor: text;
+        }
+
+        .comp-textarea::selection {
+            background: rgba(0, 210, 255, 0.35);
+            color: #ffffff;
+        }
+
+        .comparison-footer {
+            height: 50px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: #10131d;
+            gap: 12px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .comp-footer-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .comp-status {
+            font-size: 12px;
+            color: #10b981;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.2s ease;
+        }
+
+        .comp-footer-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .comp-btn-lg {
+            height: 30px;
+            padding: 0 12px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 680px) {
+            .comparison-body {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <canvas id="screenshotCanvas"></canvas>
+
+    <!-- Floating Action Toolbar -->
+    <div id="actionToolbar" class="action-toolbar">
+        <button id="btnTranslate" class="action-btn primary-btn" title="查词与翻译 (快捷键: Enter)">
+            <span>🔍 翻译</span>
+        </button>
+        <button id="btnExtract" class="action-btn" title="提取文字并查看对照结果 (快捷键: T)">
+            <span>📝 提取文字</span>
+        </button>
+        <button id="btnCopy" class="action-btn" title="复制截图 (快捷键: Cmd/Ctrl + C)">
+            <span>📋 复制图片</span>
+        </button>
+        <button id="btnSave" class="action-btn" title="保存截图 (快捷键: Cmd/Ctrl + S)">
+            <span>💾 保存图片</span>
+        </button>
+        <button id="btnClose" class="action-btn close-btn" title="关闭 (快捷键: Esc)">
+            <span>✕</span>
+        </button>
+    </div>
+
+    <!-- Feedback Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- OCR Recognition Comparison Modal (识别对照弹窗) -->
+    <div id="ocrComparisonModal" class="comparison-overlay" style="display: none;">
+        <div class="comparison-dialog">
+            <div class="comparison-header">
+                <div class="comparison-title-wrap">
+                    <span style="font-size: 16px;">📝</span>
+                    <span class="comparison-title">文字识别对照结果 (Text Recognition)</span>
+                    <span id="compCharBadge" class="comp-badge">0 字符</span>
+                    <span id="compEngineBadge" class="comp-badge engine-badge">Apple Vision</span>
+                </div>
+                <button id="btnCompClose" class="comp-close-btn" title="关闭 (Esc)">&times;</button>
+            </div>
+
+            <div class="comparison-body">
+                <!-- Left: Original Image Crop -->
+                <div class="comp-card">
+                    <div class="comp-card-header">
+                        <span>🖼️ 截图原图选区 (Original Snapshot)</span>
+                        <span id="compImageDimensions" class="comp-meta"></span>
+                    </div>
+                    <div class="comp-image-wrapper">
+                        <img id="compImagePreview" class="comp-image" alt="Cropped Screenshot">
+                    </div>
+                </div>
+
+                <!-- Right: Recognized Editable Text -->
+                <div class="comp-card">
+                    <div class="comp-card-header">
+                        <span>🔤 识别文本结果 (Extracted Text)</span>
+                        <span class="comp-subtext">可直接编辑校对</span>
+                    </div>
+                    <div class="comp-textarea-wrapper">
+                        <textarea id="compTextarea" class="comp-textarea" placeholder="识别的文字将展示在此处..." spellcheck="false"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="comparison-footer">
+                <div class="comp-footer-left">
+                    <span id="compStatusMessage" class="comp-status">✓ 已自动复制到剪贴板</span>
+                </div>
+                <div class="comp-footer-actions">
+                    <button id="btnCompCopyText" class="action-btn primary-btn comp-btn-lg" title="复制编辑后的文字到剪贴板">
+                        <span>📋 复制文字</span>
+                    </button>
+                    <button id="btnCompTranslate" class="action-btn comp-btn-lg" title="在 Spotlight 查词面板中翻译此内容">
+                        <span>🔍 查词翻译</span>
+                    </button>
+                    <button id="btnCompSaveImage" class="action-btn comp-btn-lg" title="保存截图原图到本地">
+                        <span>💾 保存图片</span>
+                    </button>
+                    <button id="btnCompDone" class="action-btn close-btn comp-btn-lg" title="完成并关闭窗口 (Esc)">
+                        <span>✕ 关闭</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="screenshot.js"></script>
 </body>
 </html>

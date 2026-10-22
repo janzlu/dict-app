@@ -1,5 +1,5 @@
 const electron = require('electron');
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, nativeTheme } = electron;
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, nativeTheme, systemPreferences, shell } = electron;
 let globalShortcut = electron.globalShortcut;
 
 if (process.env.PLAYWRIGHT_TEST === 'true') {
@@ -24,12 +24,15 @@ if (process.env.PLAYWRIGHT_TEST === 'true') {
     globalShortcut = mock;
 }
 
+const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const { initDb } = require('./utils/db');
 const { calculateNextReview } = require('./utils/sm2');
 const { translateWithPreservation } = require('./utils/preservation');
 const syncEngine = require('./utils/sync');
+const ocrEngine = require('./utils/ocr');
+const translator = require('./utils/translator');
 const { autoUpdater } = require('electron-updater');
 
 // --- Single Instance Lock ---
@@ -81,6 +84,19 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         tray.on('double-click', () => {
             openDashboard();
         });
+        tray.on('click', () => {
+            openDashboard();
+        });
+
+        // 2.1 macOS Dock Menu Configuration
+        if (process.platform === 'darwin' && app.dock) {
+            const dockMenu = Menu.buildFromTemplate([
+                { label: '打开生词本中心 (Dashboard)', click: () => openDashboard() },
+                { label: '🔍 查词面板 (Search Word)', click: () => { inputWindow.show(); inputWindow.focus(); } },
+                { label: '🎲 碎片复习 (Shuffle Play)', click: () => checkReviewQueue() }
+            ]);
+            app.dock.setMenu(dockMenu);
+        }
 
         // 3. Create the frameless Spotlight Input Window
         inputWindow = new BrowserWindow({
@@ -161,7 +177,6 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             skipTaskbar: true,
             show: false,
             backgroundMaterial: 'none', // Disable system background material for true transparency
-            vibrancy: 'popover',           // macOS blur support
             icon: iconPath,
             webPreferences: {
                 nodeIntegration: false,
@@ -181,14 +196,14 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
              flashcardWindow.setPosition(width - 360, height - 200);
         }
         
-        // Track position to save it
+        // Track position to save it (debounced to avoid blocking disk I/O during drag)
         flashcardWindow.on('moved', () => {
              if (isFlashcardDocked) return;
              const [x, y] = flashcardWindow.getPosition();
              const currentConfig = syncEngine.getConfig(app) || {};
              currentConfig.flashcardX = x;
              currentConfig.flashcardY = y;
-             syncEngine.setConfig(app, currentConfig);
+             syncEngine.setConfigDebounced(app, currentConfig, 300);
         });
 
         flashcardWindow.loadFile(path.join(__dirname, 'src', 'flashcard.html'));
@@ -239,6 +254,8 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 console.error("Failed to register screenshot shortcut:", e);
             }
 
+            console.log(`[Main] Registered shortcuts -> Search: ${searchShortcut} (${searchOk ? 'OK' : 'FAILED'}), Screenshot: ${screenshotShortcut} (${screenshotOk ? 'OK' : 'FAILED'})`);
+
             // Update Context Menu
             const contextMenu = Menu.buildFromTemplate([
                 { label: `Search Word / 查词面板 (${searchShortcut})`, click: () => { inputWindow.show(); inputWindow.focus(); } },
@@ -255,198 +272,138 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             return { searchOk, screenshotOk };
         }
 
-        async function triggerScreenshotTranslation() {
-            if (screenshotWindow) return;
-
-            const wasInputVisible = inputWindow.isVisible();
-            const wasFlashcardVisible = flashcardWindow && flashcardWindow.isVisible();
-
-            if (wasInputVisible) inputWindow.hide();
-            if (wasFlashcardVisible) flashcardWindow.hide();
-
-            // Wait brief transition delay for hides to clear
-            setTimeout(async () => {
+        function checkScreenPermission() {
+            if (process.platform === 'darwin') {
                 try {
-                    const { screen, desktopCapturer } = require('electron');
-                    const cursorPoint = screen.getCursorScreenPoint();
-                    const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
-                    
-                    const scaleFactor = activeDisplay.scaleFactor;
-                    const width = Math.round(activeDisplay.bounds.width * scaleFactor);
-                    const height = Math.round(activeDisplay.bounds.height * scaleFactor);
-
-                    const sources = await desktopCapturer.getSources({
-                        types: ['screen'],
-                        thumbnailSize: { width, height }
-                    });
-
-                    let targetSource = sources.find(source => source.display_id === activeDisplay.id.toString());
-                    if (!targetSource) {
-                        targetSource = sources[0];
-                    }
-
-                    if (!targetSource) {
-                        throw new Error("No screen source captured");
-                    }
-
-                    lastScreenshotDataUrl = targetSource.thumbnail.toDataURL();
-
-                    const displayBounds = activeDisplay.bounds;
-                    screenshotWindow = new BrowserWindow({
-                        x: displayBounds.x,
-                        y: displayBounds.y,
-                        width: displayBounds.width,
-                        height: displayBounds.height,
-                        frame: false,
-                        transparent: true,
-                        alwaysOnTop: true,
-                        fullscreen: process.platform === 'darwin' ? false : true,
-                        enableLargerThanScreen: true,
-                        skipTaskbar: true,
-                        resizable: false,
-                        movable: false,
-                        webPreferences: {
-                            nodeIntegration: false,
-                            contextIsolation: true,
-                            preload: path.join(__dirname, 'preload.js')
-                        }
-                    });
-
-                    if (process.platform === 'darwin') {
-                        screenshotWindow.setSimpleFullScreen(true);
-                    }
-
-                    screenshotWindow.loadFile(path.join(__dirname, 'src', 'screenshot.html'));
-                    
-                    screenshotWindow.on('closed', () => {
-                        screenshotWindow = null;
-                    });
-
-                } catch (err) {
-                    console.error("Screenshot capture failed:", err);
-                    if (wasInputVisible) inputWindow.show();
-                    if (wasFlashcardVisible) flashcardWindow.show();
-                }
-            }, 150);
-        }
-
-        async function performOCR(base64Image, config) {
-            const engine = config.ocrEngine || 'ocr_space';
-            if (engine === 'youdao' && config.youdaoOcrAppKey && config.youdaoOcrSecretKey) {
-                return await performYoudaoOCR(base64Image, config.youdaoOcrAppKey, config.youdaoOcrSecretKey);
-            }
-            return await performOcrSpace(base64Image, config.ocrApiKey || 'helloworld', config.ocrLang || 'eng');
-        }
-
-        async function performOcrSpace(base64Image, apiKey, lang) {
-            console.log("[Main] OCR.space request...");
-            const params = new URLSearchParams();
-            params.append('apikey', apiKey);
-            params.append('base64Image', base64Image);
-            params.append('language', lang);
-            params.append('isOverlayRequired', 'false');
-            params.append('scale', 'true');
-
-            // Geographic routing: if user is in UTC+8 timezone, prioritize Asian endpoint api3
-            const isAsia = (new Date().getTimezoneOffset() === -480);
-            const endpoints = isAsia 
-                ? ['https://api3.ocr.space/parse/image', 'https://api.ocr.space/parse/image', 'https://api2.ocr.space/parse/image']
-                : ['https://api.ocr.space/parse/image', 'https://api2.ocr.space/parse/image', 'https://api3.ocr.space/parse/image'];
-
-            let lastError = null;
-            for (const url of endpoints) {
-                console.log(`[Main] Trying OCR.space endpoint: ${url}`);
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 12000);
-
-                try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: params.toString(),
-                        signal: controller.signal
-                    });
-                    clearTimeout(id);
-
-                    if (!res.ok) throw new Error(`OCR responded with status ${res.status}`);
-                    const json = await res.json();
-
-                    if (json.IsErroredOnProcessing) {
-                        throw new Error(json.ErrorMessage?.[0] || 'OCR processing failed');
-                    }
-
-                    if (json.ParsedResults && json.ParsedResults[0]) {
-                        const text = json.ParsedResults[0].ParsedText;
-                        if (text && text.trim()) {
-                            console.log(`[Main] OCR success on endpoint: ${url}`);
-                            return text.trim();
-                        }
-                    }
-                    throw new Error("No text detected in selection.");
-                } catch (err) {
-                    console.warn(`[Main] OCR endpoint ${url} failed:`, err.message || err);
-                    lastError = err;
-                }
-            }
-            throw lastError || new Error("All OCR endpoints failed.");
-        }
-
-        async function performYoudaoOCR(base64DataUri, appKey, secretKey) {
-            console.log("[Main] Youdao OCR request...");
-            const base64Data = base64DataUri.replace(/^data:image\/\w+;base64,/, "");
-            const crypto = require('crypto');
-            const salt = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString();
-            const curtime = Math.round(new Date().getTime() / 1000).toString();
-            
-            const signStr = appKey + base64Data + salt + curtime + secretKey;
-            const sign = crypto.createHash('sha256').update(signStr).digest('hex');
-
-            const params = new URLSearchParams({
-                img: base64Data,
-                langType: 'auto',
-                detectType: '10012',
-                imageType: '1',
-                appKey: appKey,
-                salt: salt,
-                curtime: curtime,
-                sign: sign
-            });
-
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), 8000);
-
-            try {
-                const res = await fetch('https://openapi.youdao.com/ocrapi', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: params.toString(),
-                    signal: controller.signal
-                });
-                clearTimeout(id);
-
-                if (!res.ok) throw new Error(`Youdao OCR responded with status ${res.status}`);
-                const json = await res.json();
-                
-                if (json.errorCode !== '0') {
-                    throw new Error(`Youdao OCR Error Code ${json.errorCode}`);
-                }
-
-                if (json.Result && json.Result.regions) {
-                    const lines = [];
-                    for (const region of json.Result.regions) {
-                        if (region.lines) {
-                            for (const line of region.lines) {
-                                if (line.text) lines.push(line.text);
+                    const status = systemPreferences.getMediaAccessStatus ? systemPreferences.getMediaAccessStatus('screen') : 'granted';
+                    console.log("[Main] macOS screen mediaAccessStatus:", status);
+                    if (status === 'denied' || status === 'restricted') {
+                        app.focus({ steal: true });
+                        const appTargetName = app.isPackaged ? 'Lumina (识光)' : 'Electron';
+                        dialog.showMessageBox({
+                            type: 'warning',
+                            title: '屏幕录制权限未授予',
+                            message: '识光 (Lumina) 需要屏幕录制权限',
+                            detail: `macOS 安全机制要求授予屏幕录制权限后方可划选截屏。\n\n⚠️ 重要提示：在本地开发运行环境下，请在系统设置中找到并勾选允许【${appTargetName}】（非打包状态下显示为 Electron）。\n\n开启权限后重新按下快捷键即可正常截屏。`,
+                            buttons: ['打开系统设置', '稍后再说'],
+                            defaultId: 0
+                        }).then(({ response }) => {
+                            if (response === 0) {
+                                shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
                             }
+                        });
+                        return false;
+                    }
+                } catch (e) {
+                    console.error("[Main] Error checking screen permission:", e);
+                }
+            }
+            return true;
+        }
+
+        async function triggerScreenshotTranslation() {
+            try {
+                if (screenshotWindow) return;
+
+                if (!checkScreenPermission()) {
+                    return;
+                }
+
+                const wasInputVisible = inputWindow && inputWindow.isVisible();
+                const wasFlashcardVisible = flashcardWindow && flashcardWindow.isVisible();
+
+                if (wasInputVisible) inputWindow.hide();
+                if (wasFlashcardVisible) flashcardWindow.hide();
+
+                // Wait brief transition delay for hides to clear
+                setTimeout(async () => {
+                    try {
+                        const { screen, desktopCapturer } = require('electron');
+                        const cursorPoint = screen.getCursorScreenPoint();
+                        const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
+                        
+                        const scaleFactor = activeDisplay.scaleFactor;
+                        const width = Math.round(activeDisplay.bounds.width * scaleFactor);
+                        const height = Math.round(activeDisplay.bounds.height * scaleFactor);
+
+                        const sources = await desktopCapturer.getSources({
+                            types: ['screen'],
+                            thumbnailSize: { width, height }
+                        });
+
+                        let targetSource = sources.find(source => source.display_id === activeDisplay.id.toString());
+                        if (!targetSource) {
+                            targetSource = sources[0];
+                        }
+
+                        if (!targetSource) {
+                            throw new Error("No screen source captured");
+                        }
+
+                        lastScreenshotDataUrl = targetSource.thumbnail.toDataURL();
+
+                        const displayBounds = activeDisplay.bounds;
+                        screenshotWindow = new BrowserWindow({
+                            x: displayBounds.x,
+                            y: displayBounds.y,
+                            width: displayBounds.width,
+                            height: displayBounds.height,
+                            frame: false,
+                            transparent: true,
+                            alwaysOnTop: true,
+                            fullscreen: process.platform === 'darwin' ? false : true,
+                            enableLargerThanScreen: true,
+                            skipTaskbar: true,
+                            resizable: false,
+                            movable: false,
+                            webPreferences: {
+                                nodeIntegration: false,
+                                contextIsolation: true,
+                                preload: path.join(__dirname, 'preload.js')
+                            }
+                        });
+
+                        if (process.platform === 'darwin') {
+                            screenshotWindow.setAlwaysOnTop(true, 'screen-saver');
+                            screenshotWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+                            screenshotWindow.setSimpleFullScreen(true);
+                        }
+
+                        screenshotWindow.loadFile(path.join(__dirname, 'src', 'screenshot.html'));
+                        screenshotWindow.show();
+                        screenshotWindow.focus();
+                        
+                        screenshotWindow.on('closed', () => {
+                            screenshotWindow = null;
+                        });
+
+                    } catch (err) {
+                        console.error("Screenshot capture failed:", err);
+                        if (wasInputVisible && inputWindow) inputWindow.show();
+                        if (wasFlashcardVisible && flashcardWindow) flashcardWindow.show();
+                        if (process.platform === 'darwin') {
+                            dialog.showMessageBox({
+                                type: 'warning',
+                                title: '屏幕捕获受阻',
+                                message: '无法获取屏幕画面',
+                                detail: 'macOS 屏幕录制权限可能已被关闭或尚未生效。\n\n请前往「系统设置 ➔ 隐私与安全性 ➔ 屏幕录制」确认已勾选允许。',
+                                buttons: ['前往系统设置', '取消'],
+                                defaultId: 0
+                            }).then(({ response }) => {
+                                if (response === 0) {
+                                    shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+                                }
+                            });
                         }
                     }
-                    if (lines.length > 0) return lines.join('\n');
-                }
-                throw new Error("No text detected by Youdao OCR");
-            } catch (err) {
-                console.error("[Main] Youdao OCR failed:", err);
-                throw err;
+                }, 150);
+            } catch (outerErr) {
+                console.error("triggerScreenshotTranslation unexpected error:", outerErr);
             }
+        }
+
+        async function performOCR(base64Image, config, overrideLang = null) {
+            return ocrEngine.performOCR(base64Image, config, overrideLang, app);
         }
 
         try {
@@ -500,252 +457,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         }
 
 
-        async function queryLLM(cleanWord, llmConfig) {
-            const { llmProvider, llmUrl, llmKey, llmModel } = llmConfig;
-            const baseUrl = (llmUrl || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-            const url = `${baseUrl}/chat/completions`;
-            
-            const systemPrompt = `You are a professional dictionary assistant. Translate the English input (word, phrase, or sentence) to Chinese.
-For any placeholder like [__CODE_N__], keep it exactly as-is without translating or modifying it.
-Return a valid JSON object ONLY. Do not write markdown, code blocks, or explanations outside the JSON.
-The JSON format must be:
-{
-  "word": "the input text",
-  "phonetic": "IPA phonetic spelling (leave blank for phrases/sentences)",
-  "translation": "concise and professional Chinese definition/translation"
-}`;
-
-            const payload = {
-                model: llmModel || 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: cleanWord }
-                ],
-                temperature: 0.1,
-                max_tokens: 300
-            };
-
-            if (llmProvider === 'deepseek' || llmProvider === 'openai') {
-                payload.response_format = { type: "json_object" };
-            }
-
-            try {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 5000); // 5s timeout for LLM
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${llmKey}`
-                    },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
-                clearTimeout(id);
-                if (res.ok) {
-                    const json = await res.json();
-                    const content = json.choices[0].message.content.trim();
-                    const jsonStr = content.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-                    const parsed = JSON.parse(jsonStr);
-                    if (parsed.translation) {
-                        return {
-                            source: 'llm',
-                            data: {
-                                word: parsed.word || cleanWord,
-                                phonetic: parsed.phonetic || '',
-                                translation: parsed.translation
-                            }
-                        };
-                    }
-                }
-            } catch (err) {
-                console.error("[Main] queryLLM error:", err);
-            }
-            return null;
-        }
-
-        async function queryEdgeTranslate(cleanWord) {
-            console.log(`[Main] Edge Translating: ${cleanWord}`);
-            try {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 4000);
-                const authRes = await fetch('https://edge.microsoft.com/translate/auth', { signal: controller.signal });
-                clearTimeout(id);
-                if (!authRes.ok) throw new Error(`Auth failed status: ${authRes.status}`);
-                const token = await authRes.text();
-                
-                const translateController = new AbortController();
-                const translateId = setTimeout(() => translateController.abort(), 4000);
-                const res = await fetch('https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=zh-Hans', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify([{ Text: cleanWord }]),
-                    signal: translateController.signal
-                });
-                clearTimeout(translateId);
-                
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json && json[0] && json[0].translations && json[0].translations[0]) {
-                        return {
-                            source: 'edge',
-                            data: {
-                                word: cleanWord,
-                                phonetic: '',
-                                translation: json[0].translations[0].text
-                            }
-                        };
-                    }
-                }
-                throw new Error(`Edge translate API status: ${res.status}`);
-            } catch (e) {
-                console.error("[Main] Edge translate failed:", e);
-                return null;
-            }
-        }
-
-        async function queryDeepLX(cleanWord, deeplxUrl) {
-            const url = deeplxUrl || 'https://deeplx.demo.tar.mil.pl/translate';
-            console.log(`[Main] DeepLX Translating: ${cleanWord} via ${url}`);
-            try {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 4000);
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text: cleanWord,
-                        source_lang: "EN",
-                        target_lang: "ZH"
-                    }),
-                    signal: controller.signal
-                });
-                clearTimeout(id);
-                if (res.ok) {
-                    const json = await res.json();
-                    const translation = json.data || json.translation || (json.translations && json.translations[0]?.text);
-                    if (translation) {
-                        return {
-                            source: 'deeplx',
-                            data: {
-                                word: cleanWord,
-                                phonetic: '',
-                                translation: translation
-                            }
-                        };
-                    }
-                }
-                throw new Error(`DeepLX status: ${res.status}`);
-            } catch (e) {
-                console.error("[Main] DeepLX translation failed:", e);
-                return null;
-            }
-        }
-
-        async function queryGoogleTranslate(cleanWord) {
-            console.log(`[Main] Google Translating: ${cleanWord}`);
-            try {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 4000);
-                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(cleanWord)}`, {
-                    signal: controller.signal
-                });
-                clearTimeout(id);
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json && json[0] && json[0].length > 0) {
-                        let fullTranslation = '';
-                        for (let segment of json[0]) {
-                            if (segment[0]) fullTranslation += segment[0];
-                        }
-                        if (fullTranslation) {
-                            return {
-                                source: 'translate-google',
-                                data: {
-                                    word: cleanWord,
-                                    phonetic: '',
-                                    translation: fullTranslation
-                                }
-                            };
-                        }
-                    }
-                }
-                throw new Error(`Google Translate status: ${res.status}`);
-            } catch (e) {
-                console.error("[Main] Google translate failed:", e);
-                return null;
-            }
-        }
-
-        async function queryFreeEngine(cleanWord, config) {
-            const engine = config.freeEngine || 'edge';
-            let result = null;
-
-            if (engine === 'edge') {
-                result = await queryEdgeTranslate(cleanWord);
-            } else if (engine === 'deeplx') {
-                result = await queryDeepLX(cleanWord, config.deeplxUrl);
-            } else if (engine === 'google') {
-                result = await queryGoogleTranslate(cleanWord);
-            }
-
-            if (result) return result;
-
-            // Fallback chain if preferred engine failed
-            console.log(`[Main] Preferred free engine (${engine}) failed, trying fallback Edge translator...`);
-            if (engine !== 'edge') {
-                result = await queryEdgeTranslate(cleanWord);
-                if (result) return result;
-            }
-            
-            console.log(`[Main] Fallback to Google Translate...`);
-            if (engine !== 'google') {
-                result = await queryGoogleTranslate(cleanWord);
-                if (result) return result;
-            }
-
-            return null;
-        }
-
-        async function fetchPhoneticsInBackground(cleanWord, sender) {
-            try {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 2000);
-                const res = await fetch(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(cleanWord)}`, { signal: controller.signal });
-                clearTimeout(id);
-                if (res.ok) {
-                    const json = await res.json();
-                    let phonetic = '';
-                    let ukphone = '';
-                    let usphone = '';
-                    if (json.ec && json.ec.word && json.ec.word[0]) {
-                        const wordObj = json.ec.word[0];
-                        ukphone = wordObj.ukphone || '';
-                        usphone = wordObj.usphone || '';
-                        phonetic = usphone || ukphone || '';
-                    } else if (json.ce && json.ce.word && json.ce.word[0]) {
-                        const wordObj = json.ce.word[0];
-                        phonetic = wordObj.phone || '';
-                    }
-                    if (ukphone || usphone || phonetic) {
-                        sender.send('update-phonetics', {
-                            word: cleanWord,
-                            ukphone,
-                            usphone,
-                            phonetic
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error("[Main] Background phonetic fetch failed:", e);
-            }
-        }
-
         ipcMain.handle('search-word', async (event, wordText) => {
-
             console.log(`[Main] searching for: ${wordText}`);
             if (!wordText) return { error: 'Empty query' };
 
@@ -754,217 +466,14 @@ The JSON format must be:
             if (!cleanWord) return { error: 'Empty query' };
             console.log(`[Main] cleaned query: ${cleanWord}`);
 
-            // Check Local DB first
-            let stmt = db.prepare('SELECT * FROM words WHERE word = ? COLLATE NOCASE');
-            let result = stmt.get(cleanWord);
-            
-            if (result) return { source: 'local', data: result };
-
-            // Prioritize LLM translation if enabled and API key is set
             const config = syncEngine.getConfig(app) || {};
-            if (config.llmEnabled && config.llmKey) {
-                console.log(`[Main] Prioritizing LLM translation for: ${cleanWord}`);
-                const llmResult = await translateWithPreservation(cleanWord, (text) => queryLLM(text, config));
-                if (llmResult) {
-                    return llmResult;
-                }
-                console.log(`[Main] LLM translation failed or timed out, falling back to local/online dictionaries`);
-            }
-
-            // Fallback to ECDICT
-            if (ecdictDb) {
-                stmt = ecdictDb.prepare('SELECT * FROM stardict WHERE word = ? COLLATE NOCASE');
-                result = stmt.get(cleanWord);
-                if (result) return { source: 'ecdict', data: result };
-            }
-
-            const isPhrase = cleanWord.includes(' ');
-
-            // Prioritize high-speed racing suggestions for single words before trying heavy/slower translation engines
-            if (!isPhrase) {
-                try {
-                    const racingResult = await Promise.any([
-                        // 1. Youdao Suggest API
-                        (async () => {
-                            const controller = new AbortController();
-                            const id = setTimeout(() => controller.abort(), 1500);
-                            const res = await fetch(`https://dict.youdao.com/suggest?num=1&ver=3.0&doctype=json&cache=false&le=en&q=${encodeURIComponent(cleanWord)}`, { signal: controller.signal });
-                            clearTimeout(id);
-                            if (res.ok) {
-                                const sugJson = await res.json();
-                                if (sugJson && sugJson.data && sugJson.data.entries && sugJson.data.entries.length > 0) {
-                                    const explain = sugJson.data.entries[0].explain;
-                                    if (explain) {
-                                        return {
-                                            source: 'youdao-suggest',
-                                            data: {
-                                                word: cleanWord,
-                                                phonetic: '',
-                                                translation: explain
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                            throw new Error("Youdao Suggest failed");
-                        })(),
-                        // 2. Baidu Suggestion API
-                        (async () => {
-                            const controller = new AbortController();
-                            const id = setTimeout(() => controller.abort(), 1500);
-                            const res = await fetch(`https://fanyi.baidu.com/sug`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                                },
-                                  body: 'kw=' + encodeURIComponent(cleanWord),
-                                signal: controller.signal
-                            });
-                            clearTimeout(id);
-                            if (res.ok) {
-                                const json = await res.json();
-                                if (json && json.data && json.data.length > 0) {
-                                    const translation = json.data.map(item => item.v).join('\n');
-                                    if (translation) {
-                                        return {
-                                            source: 'baidu-suggest',
-                                            data: {
-                                                word: cleanWord,
-                                                phonetic: '',
-                                                translation: translation
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                            throw new Error("Baidu Suggest failed");
-                        })()
-                    ]);
-                    if (racingResult) {
-                        fetchPhoneticsInBackground(cleanWord, event.sender);
-                        return racingResult;
-                    }
-                } catch (wordErr) {
-                    console.log("[Main] Racing Suggestion APIs failed or timed out, trying full/translation engines...");
-                }
-            }
-
-            // Query preferred free translation engine (Edge / DeepLX / Google)
-            const freeResult = await translateWithPreservation(cleanWord, (text) => queryFreeEngine(text, config));
-            if (freeResult) return freeResult;
-
-            if (!isPhrase) {      // Try Youdao full JSONAPI (longer details like phonetics) with a shorter 2s timeout
-                try {
-                    const controller = new AbortController();
-                    const id = setTimeout(() => controller.abort(), 2000);
-                    const res = await fetch(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(cleanWord)}`, { signal: controller.signal });
-                    clearTimeout(id);
-                    
-                    if (res.ok) {
-                        const json = await res.json();
-                        let translation = '';
-                        let phonetic = '';
-                        let ukphone = '';
-                        let usphone = '';
-                        
-                        if (json.ec && json.ec.word && json.ec.word[0]) {
-                            const wordObj = json.ec.word[0];
-                            ukphone = wordObj.ukphone || '';
-                            usphone = wordObj.usphone || '';
-                            phonetic = usphone || ukphone || '';
-                            if (wordObj.trs && wordObj.trs.length > 0) {
-                                translation = wordObj.trs.map(t => {
-                                    const i = t.tr?.[0]?.l?.i;
-                                    return Array.isArray(i) ? i.join('\n') : (i || '');
-                                }).filter(Boolean).join('\n');
-                            }
-                        } else if (json.ce && json.ce.word && json.ce.word[0]) {
-                            const wordObj = json.ce.word[0];
-                            phonetic = wordObj.phone || '';
-                            if (wordObj.trs && wordObj.trs.length > 0) {
-                                translation = wordObj.trs.map(t => {
-                                    const i = t.tr?.[0]?.l?.i;
-                                    return Array.isArray(i) ? i.join('\n') : (i || '');
-                                }).filter(Boolean).join('\n');
-                            }
-                        }
-                        
-                        if (!translation && json.web_trans && json.web_trans['web-translation']) {
-                            const webTrans = json.web_trans['web-translation'][0]?.trans;
-                            if (webTrans) translation = webTrans.map(t => t.value).join(', ');
-                        }
-
-                        if (translation) {
-                            return {
-                                source: 'online-youdao',
-                                data: {
-                                    word: cleanWord,
-                                    phonetic: phonetic,
-                                    ukphone: ukphone,
-                                    usphone: usphone,
-                                    translation: translation
-                                }
-                            };
-                        }
-                    }
-                } catch (dictErr) {
-                    console.error("Youdao JSONAPI failed:", dictErr);
-                }
-            }
-            
-            // Final Fallback (for phrases or when suggestion/JSONAPI failed): Google Translate / MyMemory
-            try {
-                const gtController = new AbortController();
-                const gtId = setTimeout(() => gtController.abort(), 2500); // 2.5s timeout for Google Translate
-                const gtRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(cleanWord)}`, { signal: gtController.signal });
-                clearTimeout(gtId);
-                
-                if (gtRes.ok) {
-                    const gtJson = await gtRes.json();
-                    if (gtJson && gtJson[0] && gtJson[0].length > 0) {
-                        let fullTranslation = '';
-                        for (let segment of gtJson[0]) {
-                            if (segment[0]) fullTranslation += segment[0];
-                        }
-                        
-                        return {
-                            source: 'translate-google',
-                            data: {
-                                word: cleanWord,
-                                phonetic: '',
-                                translation: fullTranslation
-                            }
-                        };
-                    }
-                }
-            } catch (gtErr) {
-                console.error("Google Translate failed, falling back to MyMemory API", gtErr);
-                try {
-                    const mmController = new AbortController();
-                    const mmId = setTimeout(() => mmController.abort(), 3000); // 3s timeout for MyMemory
-                    const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanWord)}&langpair=en|zh-CN`, { signal: mmController.signal });
-                    clearTimeout(mmId);
-                    
-                    if (mmRes.ok) {
-                        const mmJson = await mmRes.json();
-                        if (mmJson && mmJson.responseData && mmJson.responseData.translatedText) {
-                            return {
-                                source: 'translate-mymemory',
-                                data: {
-                                    word: cleanWord,
-                                    phonetic: '',
-                                    translation: mmJson.responseData.translatedText
-                                }
-                            };
-                        }
-                    }
-                } catch (mmErr) {
-                    console.error("MyMemory fallback engine also failed", mmErr);
-                }
-            }
-
-            return { error: 'Not found in any database' };
+            return translator.searchWordCascade({
+                cleanWord,
+                db,
+                ecdictDb,
+                config,
+                sender: event.sender
+            });
         });
 
 
@@ -974,19 +483,42 @@ The JSON format must be:
                 // Deduplicate explicitly (ignore case and spacing)
                 const safeWord = (wordData.word || '').toLowerCase().trim();
                 
+                let imagePath = null;
+                if (wordData.image && typeof wordData.image === 'string' && wordData.image.startsWith('data:image')) {
+                    try {
+                        const screenshotsDir = path.join(app.getPath('userData'), 'screenshots');
+                        if (!fs.existsSync(screenshotsDir)) {
+                            fs.mkdirSync(screenshotsDir, { recursive: true });
+                        }
+                        const cleanFilename = safeWord.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_').slice(0, 30);
+                        const filename = `${cleanFilename || 'word'}_${Date.now()}.png`;
+                        const fullPath = path.join(screenshotsDir, filename);
+                        const base64Data = wordData.image.replace(/^data:image\/\w+;base64,/, '');
+                        fs.writeFileSync(fullPath, Buffer.from(base64Data, 'base64'));
+                        imagePath = fullPath;
+                        console.log(`[Main] Saved screenshot for '${safeWord}' to: ${imagePath}`);
+                    } catch (imgErr) {
+                        console.error("[Main] Failed to save screenshot image:", imgErr);
+                    }
+                }
+                
                 // Pre-flight check for case-insensitive matches
-                const existing = db.prepare('SELECT id FROM words WHERE LOWER(word) = ?').get(safeWord);
+                const existing = db.prepare('SELECT id, image_path FROM words WHERE LOWER(word) = ?').get(safeWord);
                 if (existing) {
-                    return { success: true, inserted: false, reason: 'duplicate' };
+                    // If existing word doesn't have an image but new save does, update it
+                    if (!existing.image_path && imagePath) {
+                        db.prepare('UPDATE words SET image_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(imagePath, existing.id);
+                    }
+                    return { success: true, inserted: false, reason: 'duplicate', id: existing.id, imagePath: existing.image_path || imagePath };
                 }
 
                 let stmt = db.prepare(`
-                    INSERT INTO words (word, translation, phonetic) 
-                    VALUES (?, ?, ?)
+                    INSERT INTO words (word, translation, phonetic, image_path) 
+                    VALUES (?, ?, ?, ?)
                     ON CONFLICT(word) DO NOTHING
                 `);
-                const info = stmt.run(safeWord, wordData.translation, wordData.phonetic);
-                return { success: true, inserted: info.changes > 0 };
+                const info = stmt.run(safeWord, wordData.translation, wordData.phonetic, imagePath);
+                return { success: true, inserted: info.changes > 0, imagePath };
             } catch (err) {
                 console.error("Save word failed", err);
                 return { error: err.message };
@@ -1120,11 +652,8 @@ The JSON format must be:
                 }
                 
                 // Restore native window materials
-                if (typeof flashcardWindow.setBackgroundMaterial === 'function') {
-                    flashcardWindow.setBackgroundMaterial('acrylic');
-                }
                 if (typeof flashcardWindow.setVibrancy === 'function') {
-                    flashcardWindow.setVibrancy('popover');
+                    flashcardWindow.setVibrancy(null);
                 }
                 
                 flashcardWindow.webContents.send('dock-state-changed', false, dockSide);
@@ -1260,6 +789,9 @@ The JSON format must be:
             } catch(e) {}
             return {
                 ...config,
+                platform: process.platform,
+                ocrEngine: config.ocrEngine || (process.platform === 'darwin' ? 'mac_vision' : 'ocr_space'),
+                ocrLang: config.ocrLang || 'auto',
                 searchShortcutRegistered,
                 screenshotShortcutRegistered
             };
@@ -1366,47 +898,218 @@ The JSON format must be:
             }
         });
 
-
-
-        ipcMain.handle('test-llm-connection', async (event, llmConfig) => {
-            const { llmProvider, llmUrl, llmKey, llmModel } = llmConfig;
-            if (!llmKey) return { success: false, error: 'API Key cannot be empty.' };
-            
-            const baseUrl = (llmUrl || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-            const url = `${baseUrl}/chat/completions`;
-            
-            const payload = {
-                model: llmModel || 'deepseek-chat',
-                messages: [
-                    { role: 'user', content: 'Say OK' }
-                ],
-                max_tokens: 10
-            };
-
+        ipcMain.handle('save-screenshot-image', async (event, payload) => {
             try {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 6000); // 6s timeout for testing
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${llmKey}`
-                    },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
+                let base64DataUrl = typeof payload === 'string' ? payload : payload?.image;
+                const keepWindow = payload && typeof payload === 'object' && payload.keepWindow;
+                if (!base64DataUrl) return { success: false, error: 'No image data' };
+
+                const win = BrowserWindow.fromWebContents(event.sender);
+                const isScreenshotWin = (screenshotWindow && win === screenshotWindow);
+
+                if (isScreenshotWin && win && !win.isDestroyed()) {
+                    win.hide();
+                }
+
+                const defaultFilename = `Lumina_Screenshot_${Date.now()}.png`;
+                const dialogParent = isScreenshotWin ? undefined : win;
+                const { canceled, filePath } = await dialog.showSaveDialog(dialogParent, {
+                    title: '保存截图至本地',
+                    defaultPath: path.join(app.getPath('downloads'), defaultFilename),
+                    filters: [
+                        { name: 'PNG Image (*.png)', extensions: ['png'] },
+                        { name: 'All Files (*.*)', extensions: ['*'] }
+                    ]
                 });
-                clearTimeout(id);
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json.choices && json.choices[0]) {
-                        return { success: true };
+
+                if (canceled || !filePath) {
+                    if (isScreenshotWin && win && !win.isDestroyed()) {
+                        if (keepWindow) {
+                            win.show();
+                            win.focus();
+                        } else {
+                            win.close();
+                        }
+                    }
+                    return { canceled: true };
+                }
+
+                const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, '');
+                fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+
+                const { Notification } = require('electron');
+                if (Notification && Notification.isSupported()) {
+                    new Notification({
+                        title: '识光 Lumina',
+                        body: `截图已保存至：${path.basename(filePath)}`
+                    }).show();
+                }
+
+                if (isScreenshotWin && win && !win.isDestroyed()) {
+                    if (keepWindow) {
+                        win.show();
+                        win.focus();
+                    } else {
+                        win.close();
                     }
                 }
-                const text = await res.text();
-                return { success: false, error: `HTTP ${res.status}: ${text.substring(0, 150)}` };
+
+                return { success: true, filePath };
+            } catch (err) {
+                console.error("Save screenshot failed:", err);
+                return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.handle('copy-screenshot-image', (event, base64DataUrl) => {
+            try {
+                if (!base64DataUrl) return { success: false, error: 'No image data' };
+                const { clipboard, nativeImage } = require('electron');
+                const img = nativeImage.createFromDataURL(base64DataUrl);
+                clipboard.writeImage(img);
+                return { success: true };
+            } catch (err) {
+                console.error("Copy screenshot failed:", err);
+                return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.handle('get-word-image', (event, imagePath) => {
+            try {
+                if (!imagePath || !fs.existsSync(imagePath)) return null;
+                const fileBuffer = fs.readFileSync(imagePath);
+                return `data:image/png;base64,${fileBuffer.toString('base64')}`;
+            } catch (err) {
+                console.error("Get word image failed:", err);
+                return null;
+            }
+        });
+
+        // Image Text Extraction (OCR) Handlers
+        ipcMain.handle('extract-text-from-image', async (event, payload) => {
+            try {
+                let base64Data = null;
+                let lang = null;
+                let copyToClipboard = false;
+
+                if (typeof payload === 'string') {
+                    if (payload.startsWith('data:image')) {
+                        base64Data = payload;
+                    } else if (fs.existsSync(payload)) {
+                        const fileBuf = fs.readFileSync(payload);
+                        const ext = path.extname(payload).toLowerCase().replace('.', '') || 'png';
+                        base64Data = `data:image/${ext};base64,${fileBuf.toString('base64')}`;
+                    }
+                } else if (payload && typeof payload === 'object') {
+                    if (payload.image) {
+                        if (payload.image.startsWith('data:image')) {
+                            base64Data = payload.image;
+                        } else if (fs.existsSync(payload.image)) {
+                            const fileBuf = fs.readFileSync(payload.image);
+                            const ext = path.extname(payload.image).toLowerCase().replace('.', '') || 'png';
+                            base64Data = `data:image/${ext};base64,${fileBuf.toString('base64')}`;
+                        }
+                    }
+                    lang = payload.lang;
+                    if (payload.copyToClipboard !== undefined) {
+                        copyToClipboard = payload.copyToClipboard;
+                    }
+                }
+
+                if (!base64Data) {
+                    return { success: false, error: '无效的图片数据 (Invalid image data)' };
+                }
+
+                const config = syncEngine.getConfig(app) || {};
+                const engine = config.ocrEngine || (process.platform === 'darwin' ? 'mac_vision' : 'ocr_space');
+                const recognizedText = await performOCR(base64Data, config, lang);
+
+                if (copyToClipboard && recognizedText) {
+                    const { clipboard } = require('electron');
+                    clipboard.writeText(recognizedText);
+                }
+
+                return {
+                    success: true,
+                    text: recognizedText,
+                    image: base64Data,
+                    engine: engine
+                };
+            } catch (err) {
+                console.error("[Main] Extract text from image failed:", err);
+                return { success: false, error: err.message || '文字提取失败' };
+            }
+        });
+
+        ipcMain.handle('open-image-ocr-dialog', async (event) => {
+            try {
+                const { canceled, filePaths } = await dialog.showOpenDialog({
+                    title: '选择需要提取文字的图片',
+                    properties: ['openFile'],
+                    filters: [
+                        { name: '图片文件 (*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.gif)', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'] },
+                        { name: '所有文件 (*.*)', extensions: ['*'] }
+                    ]
+                });
+
+                if (canceled || !filePaths || filePaths.length === 0) {
+                    return { canceled: true };
+                }
+
+                const filePath = filePaths[0];
+                const fileBuf = fs.readFileSync(filePath);
+                const ext = path.extname(filePath).toLowerCase().replace('.', '') || 'png';
+                const base64Data = `data:image/${ext};base64,${fileBuf.toString('base64')}`;
+
+                const config = syncEngine.getConfig(app) || {};
+                const recognizedText = await performOCR(base64Data, config);
+
+                return {
+                    success: true,
+                    filePath,
+                    image: base64Data,
+                    text: recognizedText
+                };
+            } catch (err) {
+                console.error("[Main] Open image OCR failed:", err);
+                return { success: false, error: err.message || '文件读取或识别失败' };
+            }
+        });
+
+        ipcMain.handle('save-text-file', async (event, content, defaultName = 'extracted_text.txt') => {
+            try {
+                const { canceled, filePath } = await dialog.showSaveDialog({
+                    title: '导出提取文字',
+                    defaultPath: path.join(app.getPath('downloads'), defaultName),
+                    filters: [
+                        { name: '文本文档 (*.txt)', extensions: ['txt'] },
+                        { name: 'Markdown (*.md)', extensions: ['md'] },
+                        { name: '所有文件 (*.*)', extensions: ['*'] }
+                    ]
+                });
+                if (canceled || !filePath) return { canceled: true };
+                fs.writeFileSync(filePath, content || '', 'utf8');
+                return { success: true, filePath };
+            } catch (err) {
+                console.error("Save text file failed:", err);
+                return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.handle('copy-text-to-clipboard', (event, text) => {
+            try {
+                if (text) {
+                    const { clipboard } = require('electron');
+                    clipboard.writeText(text);
+                }
+                return { success: true };
             } catch (err) {
                 return { success: false, error: err.message };
             }
+        });
+
+        ipcMain.handle('test-llm-connection', async (event, llmConfig) => {
+            return translator.testLlmConnection(llmConfig);
         });
 
 
@@ -1717,9 +1420,7 @@ The JSON format must be:
         });
 
         app.on('activate', () => {
-            if (BrowserWindow.getAllWindows().length === 0) {
-                // Re-create window
-            }
+            openDashboard();
         });
     });
 
