@@ -854,11 +854,11 @@ if (window.api.onUpdateMessage) {
                 }
             } else if (msg.type === 'error') {
                 globalUpdateBanner.style.display = 'flex';
-                btnGlobalDownload.style.display = 'inline-block'; // Allow retry
+                btnGlobalDownload.style.display = 'none'; // Don't offer download button on error
                 btnGlobalInstall.style.display = 'none';
                 if (globalUpdateProgressContainer) globalUpdateProgressContainer.style.display = 'none';
                 if (globalUpdateText) {
-                    globalUpdateText.textContent = (currentLang === 'en' ? 'Update failed: ' : '更新失败: ') + msg.error;
+                    globalUpdateText.textContent = (currentLang === 'en' ? 'Update check failed: ' : '更新检测失败: ') + msg.error;
                     globalUpdateText.style.color = '#ff5555';
                 }
             }

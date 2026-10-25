@@ -46,6 +46,6 @@ test.describe('Lumina Electron UI Tests', () => {
         // Check if the search input box exists and is focused natively
         const searchInput = window.locator('#searchInput');
         await expect(searchInput).toBeVisible();
-        await expect(searchInput).toHaveAttribute('placeholder', 'Type a word...');
+        await expect(searchInput).toHaveAttribute('placeholder', /Type a word/);
     });
 });

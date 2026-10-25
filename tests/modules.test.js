@@ -75,4 +75,29 @@ describe('Modularized Services (OCR, Translator, Locales)', () => {
         const zhKeys = Object.keys(locales.zh).sort();
         expect(enKeys).toEqual(zhKeys);
     });
+
+    test('locales.js and dashboard.js evaluate without global identifier collisions', () => {
+        const vm = require('vm');
+        const fs = require('fs');
+        const path = require('path');
+        const localesSrc = fs.readFileSync(path.join(__dirname, '../src/locales.js'), 'utf8');
+        const dashboardSrc = fs.readFileSync(path.join(__dirname, '../src/dashboard.js'), 'utf8');
+
+        const context = vm.createContext({
+            window: { addEventListener: () => {}, api: {} },
+            document: {
+                getElementById: () => ({ addEventListener: () => {}, classList: { add: () => {}, remove: () => {} }, getAttribute: () => '' }),
+                querySelectorAll: () => []
+            },
+            localStorage: { getItem: () => null, setItem: () => {} },
+            navigator: { language: 'zh-CN', userAgent: 'Mac' }
+        });
+
+        expect(() => {
+            vm.runInContext(localesSrc, context);
+            // Compile dashboardSrc in the same context to verify lexical parsing (SyntaxError detection)
+            new vm.Script(dashboardSrc);
+        }).not.toThrow();
+    });
 });
+

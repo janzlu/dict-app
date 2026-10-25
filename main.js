@@ -1209,21 +1209,57 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         });
 
         // --- Updater IPCs ---
+        // --- Updater IPCs ---
         autoUpdater.autoDownload = false;
         autoUpdater.autoInstallOnAppQuit = false; // We want manual control or explicit
-        autoUpdater.setFeedURL({
-            provider: 'generic',
-            url: 'https://dict-app-web.vercel.app/'
-        });
+
+        let isInitialSilentCheck = true;
+
+        function sanitizeUpdateError(err) {
+            if (!err) return '未知更新错误';
+            const raw = typeof err === 'string' ? err : (err.message || String(err));
+            if (raw.includes('404')) {
+                return '暂未检测到匹配当前系统架构的更新通道文件 (404: latest-mac.yml)';
+            }
+            if (raw.includes('ETIMEDOUT') || raw.includes('ENOTFOUND') || raw.includes('timeout') || raw.includes('net::ERR_')) {
+                return '更新检测网络连接超时，请检查网络设置或稍后重试';
+            }
+            const firstLine = raw.split('\n')[0].replace(/^Error:\s*/i, '');
+            return firstLine.slice(0, 120);
+        }
+
+        function setPrimaryFeedUrl() {
+            autoUpdater.setFeedURL({
+                provider: 'generic',
+                url: 'https://dict-app-web.vercel.app/'
+            });
+        }
+        setPrimaryFeedUrl();
 
         ipcMain.handle('check-update', async () => {
+            isInitialSilentCheck = false;
             try {
-                if (!app.isPackaged) return { success: false, error: 'Updater not available in development mode' };
-                const result = await autoUpdater.checkForUpdates();
-                return { success: true, updateInfo: result.updateInfo };
+                if (!app.isPackaged) return { success: false, error: '开发模式下不支持自动更新检测' };
+                // Ensure primary feed is tried first
+                setPrimaryFeedUrl();
+                try {
+                    const result = await autoUpdater.checkForUpdates();
+                    return { success: true, updateInfo: result.updateInfo };
+                } catch (genericErr) {
+                    console.warn("[AutoUpdater] Generic feed failed, falling back to GitHub Releases...", genericErr.message);
+                    autoUpdater.setFeedURL({
+                        provider: 'github',
+                        owner: 'janzlu',
+                        repo: 'dict-app'
+                    });
+                    const result = await autoUpdater.checkForUpdates();
+                    return { success: true, updateInfo: result.updateInfo };
+                }
             } catch (err) {
                 console.error("Update check failed:", err);
-                return { success: false, error: err.message };
+                const friendlyMsg = sanitizeUpdateError(err);
+                notifyDashboardUpdate({ type: 'error', error: friendlyMsg });
+                return { success: false, error: friendlyMsg };
             }
         });
 
@@ -1232,7 +1268,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 await autoUpdater.downloadUpdate();
                 return { success: true };
             } catch (err) {
-                return { success: false, error: err.message };
+                return { success: false, error: sanitizeUpdateError(err) };
             }
         });
 
@@ -1290,7 +1326,15 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         autoUpdater.on('update-not-available', (info) => notifyDashboardUpdate({ type: 'update-not-available', info }));
         autoUpdater.on('download-progress', (progressObj) => notifyDashboardUpdate({ type: 'download-progress', progress: progressObj }));
         autoUpdater.on('update-downloaded', (info) => notifyDashboardUpdate({ type: 'update-downloaded', info }));
-        autoUpdater.on('error', (err) => notifyDashboardUpdate({ type: 'error', error: err.message }));
+        autoUpdater.on('error', (err) => {
+            console.error("AutoUpdater Error:", err);
+            // Suppress error banner during initial silent background check
+            if (isInitialSilentCheck) {
+                console.log("[AutoUpdater] Suppressed error banner during initial silent check");
+                return;
+            }
+            notifyDashboardUpdate({ type: 'error', error: sanitizeUpdateError(err) });
+        });
 
         ipcMain.handle('get-autoupdate', () => {
             const cfg = syncEngine.getConfig(app) || {};
@@ -1308,7 +1352,9 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         setTimeout(() => {
             const cfg = syncEngine.getConfig(app) || {};
             if (cfg.autoUpdateEnabled !== false && app.isPackaged) {
-                autoUpdater.checkForUpdates().catch(()=>{});
+                autoUpdater.checkForUpdates().catch((err) => {
+                    console.log("[AutoUpdater] Silent background check caught:", err.message);
+                });
             }
         }, 8000);
         // --- Updater IPCs ---
