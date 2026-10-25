@@ -1,11 +1,15 @@
 # 🌌 识光 Lumina
 ![Version](https://img.shields.io/badge/version-v1.9.1-blue.svg)
-![Electron](https://img.shields.io/badge/Electron-Desktop-47848f)
+![Electron](https://img.shields.io/badge/Electron-v41.1.1-47848f)
 ![Platform](https://img.shields.io/badge/platform-Win%20%7C%20Mac-lightgrey)
+![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen)
+![License](https://img.shields.io/badge/license-ISC-green.svg)
 
 一款专为桌面生态（Windows & macOS）深度定制的极客级英语生词管理与闪卡记忆法软件。告别传统词典软件笨重的界面与打断思路的弹窗，**识光 Lumina** 采用原生级全局监听与纯粹的沉浸式极简体验。
 
 软件核心思想：用户可以随时方便的沉浸式查词、翻译、记录生词，可以即时查询调出已有词，如果是生词自动新入库。突出解决的核心痛点：工作中经常遇到的英文单词看着熟悉却想不起来什么意思，同时在**毫无硬性背单词打卡压力**的环境下，边工作边提升英语词汇量。
+
+---
 
 ## ✨ 核心特性 / Features
 
@@ -27,7 +31,7 @@
   - **8 向微调手柄与整体平移**：生成截图选区后自动呈现 8 个控制把手（四角与四边中点），支持任意方向拖拽缩放；框内按住即可整体拖拽平移选区。
   - **赛博毛玻璃浮动工具条**：划选完成即刻浮出动作条，支持 **✔ 立即翻译** (`Enter`)、**📝 提取文字** (`T`)、**📋 复制图片到剪贴板** (`Cmd/Ctrl+C`)、**💾 另存为图片** (`Cmd/Ctrl+S`) 与 **✖ 取消** (`Esc`)。
   - **文字提取双栏对照弹窗**：点击“提取文字”秒级调起对照视图，左侧呈现裁剪原图与尺寸信息，右侧展示可编辑校对文本与字数统计，配备一键「📋 复制文字」（带高亮成功动效）、「🔍 查词翻译」与「💾 保存图片」。
-  - **离线原生 Apple Vision OCR (macOS 专属)**：内置自研 Swift 原生 OCR 引擎（`resources/mac_ocr`），毫秒级极速离线识别，中英文分词与标点极佳，彻底消灭中文乱码问题。
+  - **离线原生 Apple Vision OCR (macOS 专属)**：内置自研 Swift 原生 OCR 引擎（`resources/mac_ocr`），毫秒级极速离线识别（10~25ms），中英文分词与标点极佳，彻底消灭中文乱码问题。
   - **图片实打实落盘保存**：点击“保存图片”调起系统原生保存文件窗口，支持自定义文件名与保存路径，实打实写入磁盘。
   - **图文生词本沉淀与双端 Lightbox**：保存生词时自动将截图快照异步落盘至本地，并在 SQLite 中建立强绑定；Spotlight 查词面板与 Dashboard 控制台生词表均提供 `📷` 照片徽章与全屏毛玻璃 Lightbox 语境复查。
   - **智能代码/中文保护 (Preservation Engine)**：内置非重叠占位符隔离器 (`[__CODE_N__]`)，100% 保护截图中的代码语法、变量、注释、HTML标签及已存中文字符不被破坏。
@@ -46,52 +50,100 @@
 - **☁️ 免服务跨端无感同步 (Serverless LWW-CRDT Sync)**: 不依赖任何第三方云端后端服务器。只需指定你的任一本地网盘目录（如 OneDrive），底层将自动通过基于 `updated_at` 时间戳的 Last-Write-Wins 算法比对导出 `dict_sync_data.json` 并消解多端冲突。
 - **📋 沉浸式剪贴板嗅探**: 一键开启，选中文本复制即刻唤出极速智能翻译面板。
 - **🧪 工业级自动化测试保障 (Automated Test Suite)**:
-  - 基于 `Jest` 的纯逻辑单元测试（SM-2 算法间隔阶梯、词法与代码占位符保护）。
+  - 基于 `Jest` 的纯逻辑单元测试（SM-2 算法间隔阶梯、词法与代码占位符保护、模块解耦流转与同步合并）。
   - 基于 `Playwright for Electron` 的端到端 (E2E) 自动化测试，配合测试桩确保主干心流坚固可靠。
+
+---
+
+## ⌨️ 常用快捷键速查 / Shortcuts Cheat Sheet
+
+| 场景 | 默认按键 (macOS / Windows) | 动作说明 |
+| :--- | :--- | :--- |
+| **全局呼出** | `Alt + Space` 或 `Cmd/Ctrl + Shift + D` | 快速唤出/隐藏 Spotlight 幽灵搜索框（支持在设置中自定义） |
+| **全局截屏** | `CommandOrControl + Shift + X` | 启动全域截图、框选翻译与文字提取 |
+| **截屏动作条** | `Enter` | 立即识别并翻译当前框选区域 |
+| | `T` | 调出双栏识别文字对照提取弹窗 |
+| | `Cmd / Ctrl + C` | 复制当前框选截图到剪贴板 |
+| | `Cmd / Ctrl + S` | 另存当前框选截图为本地图片 |
+| | `Esc` | 退出截图遮罩与选区 |
+| **卡片复习流** | `Space` 或 `Enter` | 翻转卡片显示释义 |
+| | `4 / 3 / 2 / 1` | 评定掌握度（4=秒杀熟练，1=陌生遗忘，左手直觉流） |
+| **Spotlight** | `Esc` | 极速收起并隐藏悬浮窗 |
+| | `Enter` | 触发精确检索或将新词添加入库 |
+
+---
 
 ## 🚀 快速启动 / Quick Start
 
-### 环境依赖
+### 环境要求
 - [Node.js](https://nodejs.org/) (推荐 LTS 版本, v18+)
 - NPM
+- macOS 开发环境（如需编译原生 Swift OCR 工具）：需自带 `swiftc`（Xcode Command Line Tools）
 
-### 跑起来
+### 本地运行步骤
 ```bash
 # 1. 克隆代码仓库
 git clone https://github.com/janzlu/dict-app.git
 cd dict-app
 
-# 2. 安装所有底层与 C++ 原生库依赖 (better-sqlite3)
+# 2. 安装底层与 C++ 原生库依赖 (better-sqlite3)
 npm install
 
-# 3. 运行本地开发终端
+# 3. 运行本地开发环境
 npm start
 ```
 
-### 运行测试
+> [!NOTE]
+> - **原生 Swift OCR 可执行文件**：仓库中已预编译并内置 `resources/mac_ocr`。如需重新编译，只需运行：
+>   ```bash
+>   swiftc -O resources/mac_ocr.swift -o resources/mac_ocr
+>   chmod +x resources/mac_ocr
+>   ```
+> - **macOS 截屏授权**：首次触发 `Cmd+Shift+X` 截屏时，macOS 会提示授予“屏幕录制”权限，开启后即可无缝截屏。
+
+### 运行自动化测试
 ```bash
-# 运行全套 Jest 单元测试 (涵盖 SM-2 算法、词法保护、解耦模块与同步缓存)
+# 运行全套 Jest 单元测试 (覆盖 SM-2、翻译流转、OCR分流与多端同步合并)
 npm test
 
-# 运行 Playwright 端到端 E2E 自动化测试
+# 运行 Playwright Electron 端到端 E2E 自动化回归测试
 npm run test:e2e
 ```
 
+---
+
 ## 📦 打包与分发 / Build & Release
 
-针对不同运行平台，本项目预设了自动化打包脚本：
+本项目配置了基于 `electron-builder` 的全自动化打包流水线：
 
 ### Windows
-将在 `dist/` 文件夹下生成 NSIS `.exe` 单文件安装包：
+输出 NSIS 格式 `.exe` 单文件安装包至 `dist/`：
 ```bash
 npm run dist
 ```
 
 ### macOS
-只需在 macOS 环境下执行以下指令即可打包 `.dmg` 与 `.zip`（针对 Apple Silicon / arm64 架构）：
+输出 `.dmg`（含拖拽至 Applications 引导视图）及 `.zip` 便携安装包至 `dist/`（针对 Apple Silicon / arm64）：
 ```bash
 CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:mac
 ```
+
+---
+
+## 📚 深入文档 / Documentation
+
+项目沉淀了完备的工程设计与技术规格文档，供深入了解设计细节与维护指引：
+
+| 文档分类 | 路径与链接 | 内容概要 |
+| :--- | :--- | :--- |
+| **架构设计** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统整体分层架构、IPC 通信白名单、模块解耦与容灾降级模型 |
+| **版本说明** | [docs/RELEASE_NOTES_V1.9.1.md](docs/RELEASE_NOTES_V1.9.1.md) | V1.9.1 离线 OCR、截图 8 向把手、双栏提取对照与安装包发布详情 |
+| **Mac 打包指南** | [docs/Mac_Build_Guide.md](docs/Mac_Build_Guide.md) | macOS 生产级编译环境、国内网络代理配置、原生依赖与构建排错 |
+| **测试策略** | [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Jest 单元测试与 Playwright 端到端测试边界定义及自动化覆盖 |
+| **需求规格 (PRD)** | [docs/PRD.md](docs/PRD.md) | 识光 Lumina 完整产品功能规划与交互体验指标 |
+| **演进路线** | [ROADMAP.md](ROADMAP.md) | 版本路线图与近期核心交付里程碑 |
+
+---
 
 ## 📂 项目结构 / Structure
 
@@ -129,8 +181,17 @@ CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:mac
 │   ├── ecdict_lite.sqlite   # 离线本地英汉词典数据库
 │   ├── glossary.json        # 专业术语前置映射词典
 │   └── icon.png             # 应用高清图标
+├── docs/                    # 完整设计与规范文档体系
+│   ├── ARCHITECTURE.md      # 系统架构设计说明书
+│   ├── Mac_Build_Guide.md   # macOS 生产构建指南
+│   ├── PRD.md               # 核心产品需求文档
+│   ├── RELEASE_NOTES_V1.9.1.md # V1.9.1 发布说明
+│   └── TESTING_STRATEGY.md  # 自动化测试策略
+├── ROADMAP.md               # 演化路线规划
 └── playwright.config.js     # Playwright 端到端测试配置文件
 ```
+
+---
 
 ## 📜 许可证 / License
 [ISC License](LICENSE)
