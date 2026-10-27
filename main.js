@@ -168,8 +168,8 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
 
         // 5. Create the Flashcard Window
         flashcardWindow = new BrowserWindow({
-            width: 340,
-            height: 200,
+            width: 320,
+            height: 180,
             frame: false,
             transparent: true,
             backgroundColor: '#00000000',
@@ -189,6 +189,9 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         if (typeof flashcardWindow.setBackgroundColor === 'function') {
             flashcardWindow.setBackgroundColor('#00000000');
         }
+        if (typeof flashcardWindow.setHasShadow === 'function') {
+            flashcardWindow.setHasShadow(false);
+        }
         
         const { screen } = require('electron');
         const primaryDisplay = screen.getPrimaryDisplay();
@@ -198,7 +201,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
         if (initialConfig.flashcardX !== undefined && initialConfig.flashcardY !== undefined) {
              flashcardWindow.setPosition(initialConfig.flashcardX, initialConfig.flashcardY);
         } else {
-             flashcardWindow.setPosition(width - 360, height - 200);
+             flashcardWindow.setPosition(width - 340, height - 200);
         }
         
         // Track position to save it (debounced to avoid blocking disk I/O during drag)
@@ -612,8 +615,8 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 // Undocking
                 isFlashcardDocked = false;
                 
-                const restoredWidth = 340;
-                const restoredHeight = 200;
+                const restoredWidth = 320;
+                const restoredHeight = 180;
                 
                 let newX;
                 if (preDockBounds) {
@@ -650,7 +653,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                     const primaryDisplay = screen.getPrimaryDisplay();
                     const { width, height } = primaryDisplay.workAreaSize;
                     flashcardWindow.setBounds({
-                        x: width - 360,
+                        x: width - 340,
                         y: height - 200,
                         width: restoredWidth,
                         height: restoredHeight
@@ -660,6 +663,9 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 // Restore native window materials
                 if (typeof flashcardWindow.setVibrancy === 'function') {
                     flashcardWindow.setVibrancy(null);
+                }
+                if (typeof flashcardWindow.setHasShadow === 'function') {
+                    flashcardWindow.setHasShadow(false);
                 }
                 
                 flashcardWindow.webContents.send('dock-state-changed', false, dockSide);
@@ -1432,6 +1438,9 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 if (!flashcardWindow.isVisible()) {
                     if (isManualReviewMode || isAutoSlideshowMode) flashcardWindow.show();
                     else flashcardWindow.showInactive(); 
+                    if (typeof flashcardWindow.setHasShadow === 'function') {
+                        flashcardWindow.setHasShadow(false);
+                    }
                 }
                 
                 // Do not steal focus for slideshows so users can just keep doing their work!

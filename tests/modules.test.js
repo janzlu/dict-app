@@ -100,7 +100,7 @@ describe('Modularized Services (OCR, Translator, Locales)', () => {
         }).not.toThrow();
     });
 
-    test('flashcard.css enforces transparent window root and avoids white-backing backdrop-filter', () => {
+    test('flashcard.css enforces transparent window root, semi-transparent card, and avoids external box-shadow', () => {
         const fs = require('fs');
         const path = require('path');
         const cssContent = fs.readFileSync(path.join(__dirname, '../src/flashcard.css'), 'utf8');
@@ -112,18 +112,32 @@ describe('Modularized Services (OCR, Translator, Locales)', () => {
         // .flashcard must not have backdrop-filter which causes Chromium to render white backing in transparent windows
         expect(cssContent).not.toMatch(/\.flashcard\s*\{[^}]*backdrop-filter/);
 
-        // Body must center content to prevent edge clipping / offsets
-        expect(cssContent).toMatch(/display:\s*flex/i);
-        expect(cssContent).toMatch(/justify-content:\s*center/i);
-        expect(cssContent).toMatch(/align-items:\s*center/i);
+        // .flashcard must be 100% to fill window without empty margins
+        expect(cssContent).toMatch(/width:\s*100%/);
+        expect(cssContent).toMatch(/height:\s*100%/);
+
+        // .flashcard must be semi-transparent (alpha around 0.7-0.85)
+        const bgMatch = cssContent.match(/\.flashcard\s*\{[\s\S]*?background:\s*rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9.]+)\s*\)/);
+        expect(bgMatch).toBeTruthy();
+        const alpha = parseFloat(bgMatch[1]);
+        expect(alpha).toBeGreaterThanOrEqual(0.6);
+        expect(alpha).toBeLessThanOrEqual(0.85);
+
+        // No external box shadow on .flashcard that causes grey halo artifacts
+        const shadowMatch = cssContent.match(/\.flashcard\s*\{[\s\S]*?box-shadow:\s*([^;]+);/);
+        if (shadowMatch) {
+            expect(shadowMatch[1]).toMatch(/inset|none/i);
+        }
     });
 
-    test('main.js configures flashcardWindow with explicit transparent backgroundColor', () => {
+    test('main.js configures flashcardWindow with 320x180 dimensions, transparent backgroundColor and no native shadow', () => {
         const fs = require('fs');
         const path = require('path');
         const mainSrc = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8');
 
+        expect(mainSrc).toMatch(/flashcardWindow\s*=\s*new BrowserWindow\(\{[\s\S]*?width:\s*320[\s\S]*?height:\s*180/);
         expect(mainSrc).toMatch(/flashcardWindow\s*=\s*new BrowserWindow\(\{[\s\S]*?backgroundColor:\s*['"]#00000000['"]/);
+        expect(mainSrc).toMatch(/setHasShadow\(false\)/);
     });
 });
 
