@@ -99,5 +99,32 @@ describe('Modularized Services (OCR, Translator, Locales)', () => {
             new vm.Script(dashboardSrc);
         }).not.toThrow();
     });
+
+    test('flashcard.css enforces transparent window root and avoids white-backing backdrop-filter', () => {
+        const fs = require('fs');
+        const path = require('path');
+        const cssContent = fs.readFileSync(path.join(__dirname, '../src/flashcard.css'), 'utf8');
+
+        // Root must enforce transparency
+        expect(cssContent).toMatch(/background-color:\s*transparent\s*!important/i);
+        expect(cssContent).toMatch(/background:\s*transparent\s*!important/i);
+
+        // .flashcard must not have backdrop-filter which causes Chromium to render white backing in transparent windows
+        expect(cssContent).not.toMatch(/\.flashcard\s*\{[^}]*backdrop-filter/);
+
+        // Body must center content to prevent edge clipping / offsets
+        expect(cssContent).toMatch(/display:\s*flex/i);
+        expect(cssContent).toMatch(/justify-content:\s*center/i);
+        expect(cssContent).toMatch(/align-items:\s*center/i);
+    });
+
+    test('main.js configures flashcardWindow with explicit transparent backgroundColor', () => {
+        const fs = require('fs');
+        const path = require('path');
+        const mainSrc = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8');
+
+        expect(mainSrc).toMatch(/flashcardWindow\s*=\s*new BrowserWindow\(\{[\s\S]*?backgroundColor:\s*['"]#00000000['"]/);
+    });
 });
+
 

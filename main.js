@@ -104,6 +104,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             height: 450,
             frame: false,
             transparent: true,
+            backgroundColor: '#00000000',
             resizable: false,
             alwaysOnTop: true,
             skipTaskbar: true,
@@ -171,12 +172,13 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
             height: 200,
             frame: false,
             transparent: true,
+            backgroundColor: '#00000000',
             hasShadow: false, // Turn off native OS rectangular shadow to remove grey corners
             resizable: false,
             alwaysOnTop: true,
             skipTaskbar: true,
             show: false,
-            backgroundMaterial: 'none', // Disable system background material for true transparency
+            ...(process.platform === 'win32' ? { backgroundMaterial: 'none' } : {}),
             icon: iconPath,
             webPreferences: {
                 nodeIntegration: false,
@@ -184,6 +186,9 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                 preload: path.join(__dirname, 'preload.js')
             }
         });
+        if (typeof flashcardWindow.setBackgroundColor === 'function') {
+            flashcardWindow.setBackgroundColor('#00000000');
+        }
         
         const { screen } = require('electron');
         const primaryDisplay = screen.getPrimaryDisplay();
@@ -350,6 +355,7 @@ if (!gotTheLock && !process.env.PLAYWRIGHT_TEST) {
                             height: displayBounds.height,
                             frame: false,
                             transparent: true,
+                            backgroundColor: '#00000000',
                             alwaysOnTop: true,
                             fullscreen: process.platform === 'darwin' ? false : true,
                             enableLargerThanScreen: true,
