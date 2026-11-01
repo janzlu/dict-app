@@ -12,6 +12,30 @@ describe('Modularized Services (OCR, Translator, Locales)', () => {
         expect(ocrEngine.mapOcrSpaceLanguage(null)).toBe('chs');
     });
 
+    test('performOCR does not fall back to cloud OCR when Vision OCR reports no text', async () => {
+        const spyNative = jest.spyOn(ocrEngine, 'performNativeMacOCR').mockRejectedValueOnce(new Error('No text recognized by Vision OCR'));
+        const spyCloud = jest.spyOn(ocrEngine, 'performOcrSpace');
+
+        await expect(ocrEngine.performOCR('data:image/png;base64,test', { ocrEngine: 'mac_vision' }))
+            .rejects.toThrow('图片中未检测到清晰文字');
+
+        expect(spyNative).toHaveBeenCalled();
+        expect(spyCloud).not.toHaveBeenCalled();
+
+        spyNative.mockRestore();
+        spyCloud.mockRestore();
+    });
+
+    test('performOcrSpace formats fetch failed error with helpful suggestion', async () => {
+        const originalFetch = global.fetch;
+        global.fetch = jest.fn().mockRejectedValue(new Error('fetch failed'));
+
+        await expect(ocrEngine.performOcrSpace('data:image/png;base64,test', 'key', 'chs'))
+            .rejects.toThrow(/OCR\.space 云端连接失败 \(fetch failed\)/);
+
+        global.fetch = originalFetch;
+    });
+
     test('searchWordCascade prioritizes local SQLite database hit before network calls', async () => {
         const mockDb = {
             prepare: jest.fn().mockReturnValue({

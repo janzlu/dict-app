@@ -42,8 +42,7 @@ function performNativeMacOCR(base64Image, lang = null, app = null) {
             }
         });
 
-        child.stdin.write(imageBuffer);
-        child.stdin.end();
+        child.stdin.end(imageBuffer);
     });
 }
 
@@ -114,6 +113,15 @@ async function performOcrSpace(base64Image, apiKey, lang) {
             lastError = err;
         }
     }
+    const isNetworkErr = lastError && (
+        lastError.message?.includes('fetch failed') ||
+        lastError.name === 'AbortError' ||
+        lastError.code === 'ENOTFOUND' ||
+        lastError.code === 'ECONNREFUSED'
+    );
+    if (isNetworkErr) {
+        throw new Error("OCR.space 云端连接失败 (fetch failed)。国内网络访问受限，macOS 建议改用「Apple Vision (原生离线引擎)」。");
+    }
     throw lastError || new Error("All OCR endpoints failed.");
 }
 
@@ -181,8 +189,11 @@ async function performOCR(base64Image, config = {}, overrideLang = null, app = n
     // 1. If macOS and engine is mac_vision (or auto-default on macOS):
     if (process.platform === 'darwin' && (engine === 'mac_vision' || !config.ocrEngine)) {
         try {
-            return await performNativeMacOCR(base64Image, overrideLang || config.ocrLang, app);
+            return await module.exports.performNativeMacOCR(base64Image, overrideLang || config.ocrLang, app);
         } catch (macErr) {
+            if (macErr.message && macErr.message.includes("No text recognized by Vision OCR")) {
+                throw new Error("图片中未检测到清晰文字");
+            }
             console.warn("[OCR] Native Mac Vision OCR failed, falling back to cloud OCR:", macErr.message);
         }
     }
@@ -190,7 +201,7 @@ async function performOCR(base64Image, config = {}, overrideLang = null, app = n
     // 2. If Youdao OCR is configured:
     if (engine === 'youdao' && config.youdaoOcrAppKey && config.youdaoOcrSecretKey) {
         try {
-            return await performYoudaoOCR(base64Image, config.youdaoOcrAppKey, config.youdaoOcrSecretKey, overrideLang);
+            return await module.exports.performYoudaoOCR(base64Image, config.youdaoOcrAppKey, config.youdaoOcrSecretKey, overrideLang);
         } catch (ydErr) {
             console.warn("[OCR] Youdao OCR failed, falling back to OCR.space:", ydErr.message);
         }
@@ -198,7 +209,7 @@ async function performOCR(base64Image, config = {}, overrideLang = null, app = n
 
     // 3. Fallback: OCR.space
     const lang = overrideLang || config.ocrLang || 'chs';
-    return await performOcrSpace(base64Image, config.ocrApiKey || 'helloworld', lang);
+    return await module.exports.performOcrSpace(base64Image, config.ocrApiKey || 'helloworld', lang);
 }
 
 module.exports = {

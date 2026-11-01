@@ -445,7 +445,8 @@ async function extractCrop() {
             if (toastBox) toastBox.classList.remove('show');
             showComparisonModal(base64, res.text, res.engine);
         } else {
-            showToast("未检测到清晰文字: " + (res?.error || '无文本'));
+            const errText = res?.error || '图片中未检测到清晰文字';
+            showToast(errText.startsWith('未检测到') ? errText : `未检测到清晰文字: ${errText}`);
         }
     } catch (e) {
         showToast("提取失败: " + e.message);
